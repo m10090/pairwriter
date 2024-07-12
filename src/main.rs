@@ -1,24 +1,22 @@
-mod connection;
-use connection::{*};
-use std::env;
-use tokio::net::TcpListener;
-use tokio_tungstenite::tungstenite::Message;
-
-
-fn check_message(message: &Message) -> Result<&Message, ()> {
-    // to be implemented
-    Ok(message)
-}
-
+mod server;
+use tokio;
+use std::env::args;
 #[tokio::main]
-async fn main() {
-    let args: Vec<String> = env::args().collect();
-    let port = String::from("8080");
-    let port = args.get(1).unwrap_or(&port);
-    let addr = format!("127.0.0.1:{}", port);
-    let listener = TcpListener::bind(&addr).await.expect("Failed to bind");
-
-    while let Ok((stream, _)) = listener.accept().await {
-        tokio::spawn(connect_to_server(stream));
+async fn main()   {
+    let args: Vec<String> = args().collect();
+    if args.len() < 2 {
+        panic!("Usage: {} <port>", args[0]);
     }
+    if args[0] == "server" {
+        server::start_server(args[1].parse().unwrap()).await; // here panic is wanted
+    }
+    if args[0] == "client" {
+        todo!();
+        // server::start_client(args[1].parse().unwrap()).await; 
+    }
+    else {
+        println!("Usage: {} <port>", args[0]);
+    }
+
 }
+
