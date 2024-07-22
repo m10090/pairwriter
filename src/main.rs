@@ -1,22 +1,36 @@
+mod client;
+mod communication;
 mod server;
-use tokio;
 use std::env::args;
-#[tokio::main]
-async fn main()   {
-    let args: Vec<String> = args().collect();
-    if args.len() < 2 {
-        panic!("Usage: {} <port>", args[0]);
-    }
-    if args[0] == "server" {
-        server::start_server(args[1].parse().unwrap()).await; // here panic is wanted
-    }
-    if args[0] == "client" {
-        todo!();
-        // server::start_client(args[1].parse().unwrap()).await; 
-    }
-    else {
-        println!("Usage: {} <port>", args[0]);
-    }
+use tokio;
 
+#[no_mangle]
+pub fn llvm_test() {
+    println!("Hello, world!");
 }
 
+#[tokio::main]
+async fn main() {
+    let args: Vec<String> = args().collect();
+    llvm_test();
+    if args.len() < 2 {
+        panic!("Usage: (client|server) <port>");
+    }
+    match args[1].as_str() {
+        "server" => {
+            let port = args[2].parse().unwrap();
+            drop(args);
+            server::start_server(port).await; // here panic is wanted
+        }
+        "client" => {
+            if args.len() < 4 {
+                panic!("Usage: (client|server) <port> <username>");
+            }
+            let url = args.get(2).unwrap().to_string();
+            let username = args.get(3).unwrap().to_string();
+            drop(args);
+            client::connect_as_client(url.to_string(), username.to_string()).await;
+        }
+        _ => panic!("Usage: (client|server) <port>"),
+    }
+}
