@@ -1,29 +1,36 @@
 use crate::communication;
+use tokio::sync::mpsc;
 use communication::rpc::RPC;
 use futures::future::select_ok;
 use futures::lock::Mutex;
-use futures::{Future, SinkExt, StreamExt};
+use futures::{SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
-use std::pin::Pin;
+use std::sync::OnceLock;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{accept_async, tungstenite::Message, WebSocketStream};
 
 type Username = String;
 lazy_static! {
-    pub static ref QUEUE: Mutex<HashMap<Username, Client>> = Mutex::new(HashMap::new());
+    static ref QUEUE: Mutex<HashMap<Username, Client>> = Mutex::new(HashMap::new());
 }
+static TX : OnceLock<mpsc::UnboundedSender<Message>> = OnceLock::new();
 
+#[cfg(debug_assertions)]
+pub async fn is_queue_empty() -> bool {
+    QUEUE.lock().await.is_empty()
+}
 #[derive(Debug, PartialEq)]
-pub enum Priviledge {
+enum Priviledge {
     ReadOnly, // TODO: improve this priviledge
     ReadWrite,
 }
+
 #[derive(Debug)]
-pub struct Client {
-    pub priviledge: Priviledge,
-    pub ws_stream: WebSocketStream<TcpStream>,
-    pub open: bool, 
+struct Client {
+     priviledge: Priviledge,
+     ws_stream: WebSocketStream<TcpStream>,
+     open: bool, 
 }
 
 impl Client {
@@ -58,6 +65,7 @@ impl Client {
             {
                 Err("you don't have the priviledge to editing file structure".to_string())
             }
+            RPC::Error(e) => Err(e),
             RPC::ReadBuffer { .. } | RPC::WriteOnBuffer { .. } | RPC::DeleteOnBuffer { .. } => {
                 Err("can't accept_buffer message".to_string())
             }
@@ -85,6 +93,10 @@ impl Client {
     }
 }
 
+
+pub async fn server_send_message(msg: Message) {
+    TX.get().unwrap().send(msg).unwrap();// todo: remove this panic
+}
 async fn handle_connection(raw_stream: TcpStream) -> Result<Client, String> {
     match accept_async(raw_stream).await {
         Ok(ws_stream) => Ok(Client {
@@ -114,7 +126,6 @@ pub async fn connect_to_server(raw_stream: TcpStream) -> Result<(), String> {
         });
     if let RPC::AddUsername(message) = rpc {
         let mut queue = QUEUE.lock().await;
-        dbg!(&queue);
         if queue.contains_key(&message.to_string()) {
             client
                 .send_message("Username already taken".into())
@@ -126,14 +137,13 @@ pub async fn connect_to_server(raw_stream: TcpStream) -> Result<(), String> {
             return Err("Username already taken".to_string());
         }
         queue.insert(message.into(), client);
-        dbg!(queue);
         return Ok(());
     }
     Err("Invalid message".to_string())
 }
 async fn read_message_from_clients() -> Result<Message, String> {
     let mut queue = QUEUE.lock().await;
-    let mut futures = Vec::with_capacity(queue.len());
+    let mut futrs = Vec::with_capacity(queue.len());
     if queue.is_empty() {
         drop(queue); // free the lock
         use tokio::time::{sleep, Duration};
@@ -142,14 +152,15 @@ async fn read_message_from_clients() -> Result<Message, String> {
     }
     // read message from all clients
     for (_, client) in queue.iter_mut() {
-        futures.push(Box::pin(client.read_message()));
+        futrs.push(Box::pin(client.read_message()));
     }
     // this will return the frist message it gets
-    let res = match select_ok(futures).await {
+    let res = match select_ok(futrs).await {
         Ok((message, _)) => Ok(message),
         Err(e) => Err(e),
     };
     dbg!(&res);
+
     if res.is_err() {
         // don't forget the free the queue
         drop(queue);
@@ -160,7 +171,8 @@ async fn read_message_from_clients() -> Result<Message, String> {
 }
 /// This function will broadcast a message to all connected clients
 /// this is public so that it can be used by the server
-pub async fn broadcast_message(message: Message) -> Result<(), String> {
+async fn broadcast_message(msg: Message) -> Result<(), String> {
+    dbg!(&msg);
     let mut queue = QUEUE.lock().await;
     let mut futures = Vec::with_capacity(queue.len());
     if queue.is_empty() {
@@ -170,7 +182,7 @@ pub async fn broadcast_message(message: Message) -> Result<(), String> {
         return Err("No clients connected".to_string());
     }
     for (_, client) in queue.iter_mut() {
-        futures.push(client.send_message(message.clone()));
+        futures.push(client.send_message(msg.clone()));
     }
     let futures = futures::future::join_all(futures).await;
     for i in futures.into_iter() {
@@ -191,10 +203,17 @@ async fn remove_dead_clients() {
     });
 }
 pub async fn handle_messages() -> ! {
+    let (tx, mut rx) = mpsc::unbounded_channel();
+    TX.set(tx).unwrap(); 
     loop {
         async {
             remove_dead_clients().await;
-            let message = read_message_from_clients().await?;
+            let message = tokio::select! {
+                client_message = read_message_from_clients() => client_message?,
+                Some(server_message) = rx.recv()=> server_message , 
+                
+            };
+
             broadcast_message(message).await?;
             Ok::<(), String>(())
         }

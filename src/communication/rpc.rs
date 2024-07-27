@@ -56,7 +56,10 @@ pub enum RPC {
     AddUsername(String),
     // Errors
     Error(String),
+    // End Connection
+
 }
+
 
 #[cfg(test)]
 mod tests {

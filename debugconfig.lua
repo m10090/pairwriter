@@ -6,9 +6,9 @@ require("dap").configurations.rust = {
 		request = "launch",
 		name = "Launch Rust Program",
 		program = function()
-			return vim.fn.getcwd() .. "/target/debug/shared-programming"
+			return vim.fn.getenv("PROJECT_DIR") .. "/target/debug/shared-programming"
 		end,
-		args = { "server", "8080"}, -- change as needed
+		args = { "client", "127.0.0.1", "rania", "--features" }, -- change as needed
 		stopOnEntry = false,
 	},
 }
