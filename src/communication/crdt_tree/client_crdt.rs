@@ -6,6 +6,8 @@ pub trait ClientFuncFile {
     fn close_file(&mut self, filename: String) -> Result<(), FileErr>;
     /// load the file from the Server
     fn create_file(&mut self, filename: String);
+    /// move the file from old path to the new path
+    fn move_file(&mut self, old_path: String, new_path: String) -> Result<(), FileErr>;
 }
 pub trait ClientFuncDir {
     fn move_dir(&mut self, old_path: String, new_path: String);
@@ -17,8 +19,6 @@ pub trait ClientFuncBuf {
     fn add_buf(&mut self, filename: String, buf: Vec<u8>);
     /// drop the buffer from the tree structure
     fn del_buf(&mut self, filename: String) -> Result<(), FileErr>;
-    /// move the file from old path to the new path
-    fn move_file(&mut self, old_path: String, new_path: String) -> Result<(), FileErr>;
 }
 impl ClientFuncFile for FileTree {
     /// get the file if found in the tree else return an error [FileErr]
@@ -39,10 +39,27 @@ impl ClientFuncFile for FileTree {
     fn create_file(&mut self, filename: String) {
         let files = &mut self.files;
         // you should have a message
-        let i = files
-            .binary_search(&filename)
-            .expect_err("file already exists");
+        let i = files.binary_search(&filename).err().unwrap();
         files.insert(i, filename);
+    }
+    fn move_file(&mut self, filename: String, new_filename: String) -> Result<(), FileErr> {
+        let files = &mut self.files;
+        let old_index = match files.binary_search(&filename) {
+            Err(_) => return Err(FileErr::FileNotFound),
+            Ok(old_index) => old_index,
+        };
+
+        let new_index = match files.binary_search(&new_filename) {
+            Ok(_) => return Err(FileErr::FileAlreadyExists),
+            Err(i) => i,
+        };
+
+        files.remove(old_index);
+
+        files.insert(new_index, new_filename.clone());
+        // if the file buffer is found remove it
+        self.tree.remove(&filename);
+        Ok(())
     }
 }
 
@@ -60,25 +77,6 @@ impl ClientFuncBuf for FileTree {
             Ok(i) => i,
         };
         files.remove(i);
-        // if the file buffer is found remove it
-        self.tree.remove(&filename);
-        Ok(())
-    }
-    fn move_file(&mut self, filename: String, new_filename: String) -> Result<(), FileErr> {
-        let files = &mut self.files;
-        let old_index = match files.binary_search(&filename) {
-            Err(_) => return Err(FileErr::FileNotFound),
-            Ok(old_index) => old_index,
-        };
-
-        let new_index = match files.binary_search(&new_filename) {
-            Ok(_) => return Err(FileErr::FileAlreadyExists),
-            Err(i) => i,
-        };
-
-        files.remove(old_index);
-
-        files.insert(new_index, new_filename.clone());
         // if the file buffer is found remove it
         self.tree.remove(&filename);
         Ok(())

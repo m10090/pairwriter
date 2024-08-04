@@ -14,6 +14,6 @@ pub async fn run_test() {
     let message = Message::binary(bincode::encode_to_vec(&rpc,config ).unwrap());
     await_message(message.clone()).await;
     let _ = crate::client::messaging::client_send_message(message).await;
-println!("test is done");
+    println!("test is done");
 
 }

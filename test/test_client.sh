@@ -12,7 +12,7 @@ fi
 # Inject the test data
 cat ./CLIENT_TEST_CODE_SNIPPET.rs > ./test_injection.rs
 
-cargo run --features "integration_testing_client" run client $url $username
+cargo run --features "integration_testing_client" client $url $username
 
 echo "// this file should be injected by the when testing is done by client
 // you sould write a function named run_test" > ./test_injection.rs

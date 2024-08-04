@@ -1,4 +1,9 @@
-use bincode::{error::EncodeError, Decode, Encode};
+
+use bincode::{
+    error::{DecodeError, EncodeError},
+    Decode, Encode,
+};
+use tokio_tungstenite::tungstenite::Message;
 
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub enum RPC {
@@ -14,15 +19,16 @@ pub enum RPC {
         position: usize,
         line: usize,
     },
-    /// `~` should refer to the Current Working Directory
+    /// `.` should refer to the Current Working Directory
     SendTreeFileStructure {
         tree: Vec<String>,
     },
     /// send file to the client  
     SendFile {
+        path: String,
         file: Vec<u8>, // this could be a automerge tree
     },
-    /// Directory system operations
+    // Directory system operations
     CreateDirectory {
         path: String,
     },
@@ -49,17 +55,20 @@ pub enum RPC {
     // Errors
     Error(String),
     // End Connection
-    EndConnection,
 }
-impl RPC {
 
+impl RPC {
     const CONFIG: bincode::config::Configuration = bincode::config::standard();
 
-    pub fn encode(&self) -> Result<Vec<u8>, EncodeError> {
-        bincode::encode_to_vec(self.clone(), Self::CONFIG)
+    /// encode the RPC to a slice of bytes
+    pub fn encode(&self) -> Result<Message, EncodeError> {
+        Ok(Message::binary(bincode::encode_to_vec(
+            self.clone(),
+            Self::CONFIG,
+        )?))
     }
     /// decode the slice of bytes to RPC
-    pub fn decode(encoded: &[u8]) -> Result<Self, bincode::error::DecodeError> {
+    pub fn decode(encoded: &[u8]) -> Result<Self, DecodeError> {
         Ok(bincode::decode_from_slice(encoded, Self::CONFIG)?.0)
     }
 }

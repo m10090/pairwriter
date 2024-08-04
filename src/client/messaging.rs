@@ -28,7 +28,7 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
 
             // #[cfg(feature = "integration_testing_client")]
             tokio::spawn(crate::integration_testing::reseived_message(message));
-            
+
             // todo!("Handle message: {:?}", message);
             // function for testing
         }

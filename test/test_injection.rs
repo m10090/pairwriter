@@ -1,25 +1,19 @@
-pub async fn run_test(){
-    loop {
-        let empty = crate::server::connection::is_queue_empty().await;
-        if !empty {
-            break;
-        }
-        sleep(Duration::from_secs(1)).await;
-    }
-    println!("test is running");
+
+pub async fn run_test() {
+    sleep(Duration::from_secs(6)).await;
+    println!("test_is_running");
     let config = bincode::config::standard();
-    let rpc = RPC::SendFile{ file: vec![1,2,3,34,45,6] };
-    let message = Message::binary(bincode::encode_to_vec(&rpc,config).unwrap());
 
-    // awaiting message is only for the client and not for the server
+    let rpc = RPC::CreateFile { path: "~/this".to_string() };
+    let message = Message::binary(bincode::encode_to_vec(&rpc,config ).unwrap());
+    await_message(message.clone()).await;
 
-    crate::server::connection::server_send_message(message).await;
+    let _ = crate::client::messaging::client_send_message(message).await;
 
-    let rpc = RPC::MoveCursor{ position: 0, path: "~/this.c".to_string(),line:9};
-    let message = Message::binary(bincode::encode_to_vec(&rpc,config).unwrap());
-
-    crate::server::connection::server_send_message(message).await;
-    
+    let rpc = RPC::DeleteFile  { path: "~/this".to_string() };
+    let message = Message::binary(bincode::encode_to_vec(&rpc,config ).unwrap());
+    await_message(message.clone()).await;
+    let _ = crate::client::messaging::client_send_message(message).await;
     println!("test is done");
 
 }
