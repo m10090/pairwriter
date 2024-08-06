@@ -1,5 +1,5 @@
 use super::{assert_ok, assert_vec, expected_err, FILES};
-use super::{FileTree, ServerFunc::*};
+use super::{FileTree, server_func::*};
 
 // to do explane the tests
 #[test]

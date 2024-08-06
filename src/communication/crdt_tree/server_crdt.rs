@@ -8,7 +8,7 @@ use automerge::{transaction::Transactable, ROOT};
 
 use super::*;
 
-pub mod ServerFunc {
+pub mod server_func {
     use super::*;
     pub trait ServerFuncFile {
         fn open_file(&mut self, path: String) -> io::Result<()>;
@@ -27,7 +27,8 @@ pub mod ServerFunc {
         fn close_buffer(&mut self, path: String) -> io::Result<()>;
     }
 }
-use ServerFunc::*;
+
+use server_func::*;
 impl ServerFuncFile for FileTree {
     fn open_file(&mut self, path: String) -> io::Result<()> {
         let file_text = fs::read_to_string(&path)?; // todo: check the error
@@ -82,34 +83,62 @@ impl ServerFuncFile for FileTree {
     }
 
     fn move_file(&mut self, old_path: String, new_path: String) -> io::Result<()> {
-        let files = &mut self.files;
-        // check if the old_files exists and the new_file does not exist
-        if files.binary_search(&old_path).is_ok() && files.binary_search(&new_path).is_err() {
-            #[cfg(not(test))]
-            fs::rename(&old_path, &new_path)?;
-            // remove them with the same order in the files
-            // and will not check error because it's
-            // checked in the previous if statement
+        // you know borrow checker
+        let files = &self.files;
+        let old_index = match files.binary_search(&old_path) {
+            Err(_) => return Err(Error::new(io::ErrorKind::NotFound, "file not found")),
+            Ok(old_index) => old_index,
+        };
 
-            match files.binary_search(&old_path) {
-                Ok(i) => {
-                    files.remove(i);
-                }
-                _ => unreachable!(),
-            }
-            match files.binary_search(&new_path) {
-                Err(j) => {
-                    files.insert(j, new_path);
-                }
-                _ => unreachable!(),
-            }
-            Ok(())
-        } else {
-            Err(Error::new(
+        let new_dir_path = Path::new(&new_path)
+            .parent()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string()
+            + "/"; // no need to check old path parent
+        let old_dir_path = Path::new(&old_path)
+            .parent()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string()
+            + "/";
+        if !self.in_dir(&new_dir_path) {
+            return Err(Error::new(
                 io::ErrorKind::NotFound,
-                "Either old file does not exist or new file already exists",
-            ))
+                "The directory does not exist",
+            ));
         }
+        let files = &mut self.files;
+
+        files.remove(old_index);
+        match files.binary_search(&new_path) {
+            Ok(_) => {
+                return Err(Error::new(
+                    io::ErrorKind::AlreadyExists,
+                    "file path already exists",
+                ))
+            }
+            Err(i) => files.insert(i, new_path),
+        }
+
+        match self.emty_dirs.binary_search(&new_dir_path) {
+            Err(_) => (),
+            Ok(i) => {
+                self.emty_dirs.remove(i);
+            }
+        }
+        if !self.in_dir(&old_dir_path) {
+            let emty_dirs = &mut self.emty_dirs;
+            match emty_dirs.binary_search(&old_dir_path) {
+                Ok(_) => unreachable!(),
+                Err(i) => emty_dirs.insert(i, old_dir_path),
+            }
+        }
+
+        Ok(())
+
     }
     fn rm_file(&mut self, path: String) -> io::Result<()> {
         let files = &mut self.files;

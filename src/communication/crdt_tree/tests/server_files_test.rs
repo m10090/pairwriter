@@ -5,9 +5,9 @@ use std::{
 };
 
 use super::{
-    assert_ok, assert_vec, expected_err, FileTree,
-    ServerFunc::{self, *},
-    FILES,
+    assert_ok, assert_vec, expected_err,
+    server_func::{self, *},
+    FileTree, FILES,
 };
 // TODO: explain the tests
 #[test]
@@ -133,7 +133,7 @@ fn move_file_1() {
 #[test]
 fn move_file_2() {
     let mut files = FILES.clone();
-    let emty_dirs = vec!["./empty_dir/".to_string()];
+    let mut emty_dirs = vec!["./empty_dir/".to_string()];
 
     let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
 
@@ -145,6 +145,7 @@ fn move_file_2() {
     files.retain(|x| *x != "./dir1/file1.txt".to_string());
     files.push("./empty_dir/file1.txt".to_string());
     files.sort();
+    emty_dirs.clear();
 
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
@@ -152,7 +153,7 @@ fn move_file_2() {
 #[test]
 fn move_file_3() {
     let mut files = FILES.clone();
-    let emty_dirs = vec![];
+    let mut emty_dirs = vec![];
 
     let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
 
@@ -162,7 +163,9 @@ fn move_file_3() {
     ));
     files.retain(|x| *x != "./dir_with_one_file/file.txt".to_string());
     files.push("./dir1/file3.txt".to_string());
+    emty_dirs.push("./dir_with_one_file/".to_string());
 
+    emty_dirs.sort();
     files.sort();
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
@@ -187,7 +190,7 @@ fn remove_file_add_emty_dir() {
     let mut emty_dirs = vec!["./empty_dir/".to_string()];
 
     let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
-    
+
     assert_ok(ft.rm_file("./dir_with_one_file/file.txt".to_string()));
 
     files.retain(|x| *x != "./dir_with_one_file/file.txt".to_string());
