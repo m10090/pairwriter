@@ -50,11 +50,15 @@ pub enum RPC {
         path: String,
         new_path: String,
     },
+    RequestSaveFile{
+        path: String,
+    },
     // string requests
     AddUsername(String),
     // Errors
     Error(String),
     // End Connection
+    
 }
 
 impl RPC {

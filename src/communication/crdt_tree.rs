@@ -27,7 +27,7 @@ impl FileTree {
     /// to work right you need to have the dir_path with ending with '/'
     /// returns `true` of the dir_path is in the tree otherwise `false`
     fn in_dir(&self, dir_path: &String) -> bool {
-        if !dir_path.starts_with("./") || !dir_path.ends_with('/') {
+        if !Self::valid_dir_path(dir_path) {
             return false;
         }
         if dir_path == "./" {
@@ -44,11 +44,22 @@ impl FileTree {
             })
             .is_ok()
             || emty_dirs.binary_search(dir_path).is_ok()
+            || emty_dirs
+                .binary_search_by(|x| {
+                    if x.starts_with(dir_path) {
+                        std::cmp::Ordering::Equal
+                    } else {
+                        x.cmp(dir_path)
+                    }
+                })
+                .is_ok()
+           
         {
             return true;
         }
         false
     }
+    #[inline]
     fn valid_dir_path(dir_path: &str) -> bool {
         dir_path.starts_with("./") && dir_path.ends_with('/')
     }
@@ -56,4 +67,4 @@ impl FileTree {
 pub mod client_crdt;
 pub mod server_crdt;
 #[cfg(test)]
-pub mod server_crdt_test;
+pub mod tests;
