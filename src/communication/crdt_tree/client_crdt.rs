@@ -22,9 +22,9 @@ pub mod client_func {
     }
     pub trait ClientFuncBuf {
         /// add the buffer (or the automerge tree) to the file tree
-        fn add_buf(&mut self, filename: String, buf: &[u8]);
+        fn add_buf(&mut self, filename: String, buf: &[u8]) -> Res<()>;
         /// drop the buffer from the tree structure
-        fn del_buf(&mut self, filename: String) -> Result<(), FileErr>;
+        fn drop_buf(&mut self, filename: String);
     }
 }
 use client_func::*;
@@ -150,11 +150,24 @@ impl ClientFuncFile for FileTree {
 }
 
 impl ClientFuncBuf for FileTree {
-    fn add_buf(&mut self, filename: String, buf: &[u8]) {
-        todo!()
+    fn add_buf(&mut self, filename: String, buf: &[u8]) -> Res<()> {
+        if self.files.binary_search(&filename).is_ok() {
+            let buf = automerge::Automerge::load(buf).map_err(|_| {
+                Error::new(
+                    io::ErrorKind::InvalidData,
+                    "The file is not a valid automerge file",
+                )
+            })?;
+            self.tree.insert(filename, buf);
+            return Ok(());
+        }
+        Err(Error::new(
+            io::ErrorKind::NotFound,
+            "The file does not exist",
+        ))
     }
-    fn del_buf(&mut self, filename: String) -> Result<(), FileErr> {
-        todo!()
+    fn drop_buf(&mut self, filename: String) {
+        self.tree.remove(&filename);
     }
 }
 

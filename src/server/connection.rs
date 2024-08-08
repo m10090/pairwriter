@@ -172,22 +172,19 @@ async fn read_message_from_clients() -> Result<Message, String> {
 /// this is public so that it can be used by the server
 async fn broadcast_message(msg: Message) -> Result<(), String> {
     dbg!(&msg);
-    let mut queue = QUEUE.lock().await;
-    let mut futures = Vec::with_capacity(queue.len());
-    if queue.is_empty() {
-        drop(queue); // this will free the lock
+    if is_queue_empty().await {
         use tokio::time::{sleep, Duration};
         sleep(Duration::from_millis(200)).await;
         return Err("No clients connected".to_string());
     }
+    let mut queue = QUEUE.lock().await;
+    let mut futures = Vec::with_capacity(queue.len());
     for (_, client) in queue.iter_mut() {
         futures.push(client.send_message(msg.clone()));
     }
     let futures = futures::future::join_all(futures).await;
     for i in futures.into_iter() {
-        if let Err(e) = i {
-            return Err(e);
-        }
+        i?
     }
     Ok(())
 }

@@ -1,5 +1,7 @@
 use automerge::Automerge;
 use std::collections::HashMap;
+use std::path::Path;
+
 #[derive(Debug, Clone)]
 pub struct FileTree {
     tree: HashMap<String, Automerge>,
@@ -7,12 +9,6 @@ pub struct FileTree {
     emty_dirs: Vec<String>, // take care when working with emty_dirs
                         // Every operation on emty_dirs will be commented with EMTY_DIRS_OP
 }
-pub enum FileErr {
-    FileNotFound,
-    FileNotOpen,
-    FileAlreadyExists,
-}
-
 impl FileTree {
     pub fn new(mut files: Vec<String>, mut emty_dirs: Vec<String>) -> Self {
         let tree = HashMap::new();
@@ -53,7 +49,6 @@ impl FileTree {
                     }
                 })
                 .is_ok()
-           
         {
             return true;
         }
@@ -62,6 +57,16 @@ impl FileTree {
     #[inline]
     fn valid_dir_path(dir_path: &str) -> bool {
         dir_path.starts_with("./") && dir_path.ends_with('/')
+    }
+    #[inline]
+    fn parent_dir(path: &str) -> String {
+        Path::new(&path)
+            .parent()
+            .unwrap_or(Path::new("./")) // Handle case where there's no parent
+            .to_str()
+            .unwrap_or("./")
+            .to_string()
+            + "/"
     }
 }
 pub mod client_crdt;
