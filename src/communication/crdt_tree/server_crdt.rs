@@ -10,6 +10,7 @@ use super::*;
 
 pub mod server_func {
     use super::*;
+
     pub trait ServerFuncFile {
         fn open_file(&mut self, path: String) -> Res<()>;
         fn create_file(&mut self, path: String) -> Res<()>;
@@ -22,10 +23,12 @@ pub mod server_func {
         fn rm_dir(&mut self, path: String) -> Res<()>;
         fn make_dir(&mut self, path: String) -> Res<()>;
     }
+
     pub trait ServerFuncBuf {
         fn drop_buf(&mut self, path: String) -> Res<()>;
-        fn save_buf(self, path: String) -> Res<()>;
+        fn save_buf(&mut self, path: String) -> Res<()>;
     }
+
 }
 
 use server_func::*;
@@ -331,7 +334,7 @@ impl ServerFuncBuf for FileTree {
             ))
         }
     }
-    fn save_buf(self, path: String) -> Res<()> {
+    fn save_buf(&mut self, path: String) -> Res<()> {
         if self.files.binary_search(&path).is_err() {
             return Err(Error::new(
                 io::ErrorKind::NotFound,
@@ -345,22 +348,21 @@ impl ServerFuncBuf for FileTree {
                 .map_err(|_| {
                     Error::new(io::ErrorKind::InvalidData, "The file content is not valid")
                 })?
-                .unwrap(); // todo: the panic
+                .unwrap(); // todo: the error
             if let Ok(text) = file.text(content_exid) {
                 fs::write(&path, text)?;
-            } else if let Value::Scalar(Cow::Owned(ScalarValue::Bytes(bin))) = bin { // todo: check
-                // this
+            } else if let Value::Scalar(Cow::Owned(ScalarValue::Bytes(bin))) = bin {
+                // todo: check this
                 fs::write(&path, bin)?;
             } else {
-                return Err(Error::new(
-                    io::ErrorKind::InvalidData,
-                    "The file content is not valid",
-                ));
+                fs::write(&path, vec![])?;
             }
+            Ok(())
+        } else {
+            Err(Error::new(
+                io::ErrorKind::NotConnected,
+                "file is not opened or not found",
+            ))
         }
-        Err(Error::new(
-            io::ErrorKind::NotConnected,
-            "file is not opened or not found",
-        ))
     }
 }
