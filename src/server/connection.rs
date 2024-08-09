@@ -1,13 +1,10 @@
-use crate::communication;
-use communication::rpc::RPC;
-use futures::future::select_ok;
-use futures::lock::Mutex;
-use futures::{SinkExt, StreamExt};
+use crate::communication::{crdt_tree::server_crdt::server_func, rpc::RPC};
+use crate::communication::crdt_tree::{self, server_func::*};
+use futures::{future::select_ok, SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::sync::OnceLock;
-use tokio::net::TcpStream;
-use tokio::sync::mpsc;
+use tokio::{net::TcpStream, sync::{mpsc, Mutex}};
 use tokio_tungstenite::{accept_async, tungstenite::Message, WebSocketStream};
 
 type Username = String;
@@ -34,7 +31,7 @@ struct Client {
 }
 
 impl Client {
-    // close the connection with the client
+    /// close the connection with the client
     pub async fn send_message(&mut self, message: Message) -> Result<(), String> {
         let ws_stream = &mut self.ws_stream;
         let error = Err(format!(
@@ -50,7 +47,7 @@ impl Client {
     fn check_message(
         &self,
         message: Message,
-    ) -> Result<(communication::rpc::RPC, Message), String> {
+    ) -> Result<(RPC, Message), String> {
         let message_vec = message.clone().into_data();
         let rpc = RPC::decode(&message_vec).unwrap_or_else(|err| {
             return RPC::Error(err.to_string());

@@ -3,32 +3,22 @@ use std::io::Result as Res;
 use std::io::{self, Error};
 use std::path::Path;
 
-pub mod client_func {
-    use super::*;
-    pub trait ClientFuncFile {
-        /// this opens a file and returns a reference to the file
-        fn open_file(&mut self, filename: String) -> Res<&Automerge>;
-        /// this removes the files from the tree if needed
-        fn close_file(&mut self, filename: String) -> Res<()>;
-        /// load the file from the Server
-        fn create_file(&mut self, filename: String) -> Res<()>;
-        /// move the file from old path to the new path
-        fn move_file(&mut self, old_path: String, new_path: String) -> Res<()>;
-    }
-    pub trait ClientFuncDir {
-        fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()>;
-        fn rm_dir(&mut self, path: String) -> Res<()>;
-        fn make_dir(&mut self, path: String) -> Res<()>;
-    }
-    pub trait ClientFuncBuf {
-        /// add the buffer (or the automerge tree) to the file tree
-        fn add_buf(&mut self, filename: String, buf: &[u8]) -> Res<()>;
-        /// drop the buffer from the tree structure
-        fn drop_buf(&mut self, filename: String);
-    }
+pub trait ClientFunc {
+    /// this opens a file and returns a reference to the file
+    fn open_file(&mut self, filename: String) -> Res<&Automerge>;
+    /// load the file from the Server
+    fn create_file(&mut self, filename: String) -> Res<()>;
+    /// move the file from old path to the new path
+    fn move_file(&mut self, old_path: String, new_path: String) -> Res<()>;
+    fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()>;
+    fn rm_dir(&mut self, path: String) -> Res<()>;
+    fn make_dir(&mut self, path: String) -> Res<()>;
+    /// add the buffer (or the automerge tree) to the file tree
+    fn add_buf(&mut self, filename: String, buf: &[u8]) -> Res<()>;
+    /// drop the buffer from the tree structure
+    fn drop_buf(&mut self, filename: String);
 }
-use client_func::*;
-impl ClientFuncFile for FileTree {
+impl ClientFunc for FileTree {
     /// get the file if found in the tree else return an error [FileErr]
     fn open_file(&mut self, filename: String) -> Res<&automerge::Automerge> {
         let file = self.tree.get(&filename);
@@ -45,16 +35,6 @@ impl ClientFuncFile for FileTree {
         }
     }
 
-    fn close_file(&mut self, filename: String) -> Res<()> {
-        if self.tree.remove(&filename).is_none() {
-            Err(Error::new(
-                io::ErrorKind::NotConnected,
-                "file is already closed",
-            ))
-        } else {
-            Ok(())
-        }
-    }
     fn create_file(&mut self, filename: String) -> Res<()> {
         // you should have a message
         let parrent_path = Path::new(&filename)
@@ -147,9 +127,6 @@ impl ClientFuncFile for FileTree {
         self.tree.remove(&old_path);
         Ok(())
     }
-}
-
-impl ClientFuncBuf for FileTree {
     fn add_buf(&mut self, filename: String, buf: &[u8]) -> Res<()> {
         if self.files.binary_search(&filename).is_ok() {
             let buf = automerge::Automerge::load(buf).map_err(|_| {
@@ -169,9 +146,6 @@ impl ClientFuncBuf for FileTree {
     fn drop_buf(&mut self, filename: String) {
         self.tree.remove(&filename);
     }
-}
-
-impl ClientFuncDir for FileTree {
     fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()> {
         todo!()
     }

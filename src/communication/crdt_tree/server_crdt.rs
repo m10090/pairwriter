@@ -8,32 +8,19 @@ use automerge::{transaction::Transactable, ReadDoc, ROOT};
 
 use super::*;
 
-pub mod server_func {
-    use super::*;
-
-    pub trait ServerFuncFile {
-        fn open_file(&mut self, path: String) -> Res<()>;
-        fn create_file(&mut self, path: String) -> Res<()>;
-        fn move_file(&mut self, old_path: String, new_path: String) -> Res<()>;
-        fn rm_file(&mut self, path: String) -> Res<()>;
-    }
-
-    pub trait ServerFuncDir {
-        fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()>;
-        fn rm_dir(&mut self, path: String) -> Res<()>;
-        fn make_dir(&mut self, path: String) -> Res<()>;
-    }
-
-    pub trait ServerFuncBuf {
-        fn drop_buf(&mut self, path: String) -> Res<()>;
-        fn save_buf(&mut self, path: String) -> Res<()>;
-    }
-
+pub trait ServerFunc {
+    fn open_file(&mut self, path: String) -> Res<()>;
+    fn create_file(&mut self, path: String) -> Res<()>;
+    fn move_file(&mut self, old_path: String, new_path: String) -> Res<()>;
+    fn rm_file(&mut self, path: String) -> Res<()>;
+    fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()>;
+    fn rm_dir(&mut self, path: String) -> Res<()>;
+    fn make_dir(&mut self, path: String) -> Res<()>;
+    fn drop_buf(&mut self, path: String) -> Res<()>;
+    fn save_buf(&mut self, path: String) -> Res<()>;
 }
 
-use server_func::*;
-
-impl ServerFuncFile for FileTree {
+impl ServerFunc for FileTree {
     fn open_file(&mut self, path: String) -> Res<()> {
         if self.files.binary_search(&path).is_err() {
             return Err(Error::new(
@@ -171,9 +158,6 @@ impl ServerFuncFile for FileTree {
         }
         Ok(())
     }
-}
-
-impl ServerFuncDir for FileTree {
     fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()> {
         if !(Self::valid_dir_path(&new_path) && Self::valid_dir_path(&old_path)) {
             return Err(Error::new(
@@ -321,9 +305,6 @@ impl ServerFuncDir for FileTree {
 
         Ok(())
     }
-}
-
-impl ServerFuncBuf for FileTree {
     fn drop_buf(&mut self, path: String) -> Res<()> {
         if self.files.binary_search(&path).is_ok() && self.tree.remove(&path).is_some() {
             Ok(())
