@@ -1,4 +1,3 @@
-
 use bincode::{
     error::{DecodeError, EncodeError},
     Decode, Encode,
@@ -12,19 +11,24 @@ pub enum RPC {
         path: String,
     },
     EditBuffer {
+        path: String,
         changes: Vec<Vec<u8>>,
     },
-    MoveCursor {
+    ClientMoveCursor {
         path: String,
         position: usize,
-        line: usize,
+    },
+    ServerMoveCursor {
+        username: String,
+        path: String,
+        position: usize,
     },
     /// `.` should refer to the Current Working Directory
-    SendTreeFileStructure {
+    ServerSendTreeFileStructure {
         tree: Vec<String>,
     },
     /// send file to the client  
-    SendFile {
+    ServerSendFile {
         path: String,
         file: Vec<u8>, // this could be a automerge tree
     },
@@ -50,15 +54,28 @@ pub enum RPC {
         path: String,
         new_path: String,
     },
-    RequestSaveFile{
+    ClientRequestSaveFile {
         path: String,
     },
-    // string requests
+    ServerFileSaved{
+        path: String,
+    },
     AddUsername(String),
-    // Errors
-    Error(String),
-    // End Connection
     
+    Error(String),
+    // this is a simple selection of a file
+    // also it doesn't support multiple selection as not all editors support it
+    RequestMark {
+        path: String,
+        s_position: usize,
+        e_position: usize,
+    },
+    Mark {
+        path: String,
+        s_position: usize,
+        e_position: usize,
+        username: String,
+    },
 }
 
 impl RPC {

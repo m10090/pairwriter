@@ -13,8 +13,8 @@ pub struct FileTree {
 impl FileTree {
     pub fn new(mut files: Vec<String>, mut emty_dirs: Vec<String>) -> Self {
         let tree = HashMap::new();
-        files.sort();
-        emty_dirs.sort();
+        files.sort_unstable();
+        emty_dirs.sort_unstable();
         Self {
             tree,
             files,
@@ -74,3 +74,4 @@ pub mod client_crdt;
 pub mod server_crdt;
 #[cfg(test)]
 pub mod tests;
+

@@ -13,6 +13,7 @@ pub trait ServerFunc {
     fn create_file(&mut self, path: String) -> Res<()>;
     fn move_file(&mut self, old_path: String, new_path: String) -> Res<()>;
     fn rm_file(&mut self, path: String) -> Res<()>;
+    // dir operations
     fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()>;
     fn rm_dir(&mut self, path: String) -> Res<()>;
     fn make_dir(&mut self, path: String) -> Res<()>;
@@ -136,6 +137,7 @@ impl ServerFunc for FileTree {
         };
         Ok(())
     }
+
     fn rm_file(&mut self, path: String) -> Res<()> {
         let files = &mut self.files;
         if let Ok(i) = files.binary_search(&path) {
@@ -332,7 +334,7 @@ impl ServerFunc for FileTree {
                 .unwrap(); // todo: the error
             if let Ok(text) = file.text(content_exid) {
                 fs::write(&path, text)?;
-            } else if let Value::Scalar(Cow::Owned(ScalarValue::Bytes(bin))) = bin {
+            } else if let Value::Scalar(Cow::Borrowed(ScalarValue::Bytes(bin))) = bin {
                 // todo: check this
                 fs::write(&path, bin)?;
             } else {

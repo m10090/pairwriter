@@ -10,8 +10,11 @@ pub trait ClientFunc {
     fn create_file(&mut self, filename: String) -> Res<()>;
     /// move the file from old path to the new path
     fn move_file(&mut self, old_path: String, new_path: String) -> Res<()>;
+    /// move the directror from old path to the new path
     fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()>;
+    /// remove the directory from the tree
     fn rm_dir(&mut self, path: String) -> Res<()>;
+    /// make a new directory in the tree
     fn make_dir(&mut self, path: String) -> Res<()>;
     /// add the buffer (or the automerge tree) to the file tree
     fn add_buf(&mut self, filename: String, buf: &[u8]) -> Res<()>;
