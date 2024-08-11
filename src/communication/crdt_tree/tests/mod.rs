@@ -1,5 +1,5 @@
 
-use super::{server_crdt::*, FileTree};
+use super::{server_crdt::ServerFunc, FileTree};
 use ctor::ctor;
 
 

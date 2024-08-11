@@ -1,10 +1,13 @@
-use crate::communication::{crdt_tree::server_crdt::server_func, rpc::RPC};
-use crate::communication::crdt_tree::{self, server_func::*};
+use crate::communication::crdt_tree::{self, server_crdt::ServerFunc};
+use crate::communication::rpc::RPC;
 use futures::{future::select_ok, SinkExt, StreamExt};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::sync::OnceLock;
-use tokio::{net::TcpStream, sync::{mpsc, Mutex}};
+use tokio::{
+    net::TcpStream,
+    sync::{mpsc, Mutex},
+};
 use tokio_tungstenite::{accept_async, tungstenite::Message, WebSocketStream};
 
 type Username = String;
@@ -44,10 +47,7 @@ impl Client {
             _ => error,
         }
     }
-    fn check_message(
-        &self,
-        message: Message,
-    ) -> Result<(RPC, Message), String> {
+    fn check_message(&self, message: Message) -> Result<(RPC, Message), String> {
         let message_vec = message.clone().into_data();
         let rpc = RPC::decode(&message_vec).unwrap_or_else(|err| {
             return RPC::Error(err.to_string());

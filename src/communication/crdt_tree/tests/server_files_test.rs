@@ -6,7 +6,7 @@ use std::{
 
 use super::{
     assert_ok, assert_vec, expected_err,
-    server_func::{self, *},
+    ServerFunc,
     FileTree, FILES,
 };
 // TODO: explain the tests
