@@ -1,14 +1,23 @@
+use core::panic;
 use std::{
     borrow::Cow,
     fs::{self, File},
     io::{self, Error, Result as Res},
+    mem,
 };
 
+use crate::server::connection::{Client, Priviledge};
 use automerge::{transaction::Transactable, ReadDoc, ROOT};
+use futures::task::waker;
+use tokio_tungstenite::tungstenite::{client, Message};
 
 use super::*;
+use crate::communication::rpc::RPC;
 
-pub trait ServerFunc {
+use macros::conditional_pub;
+
+#[conditional_pub(test)]
+trait ServerFunc {
     fn open_file(&mut self, path: String) -> Res<()>;
     fn create_file(&mut self, path: String) -> Res<()>;
     fn move_file(&mut self, old_path: String, new_path: String) -> Res<()>;
@@ -19,6 +28,16 @@ pub trait ServerFunc {
     fn make_dir(&mut self, path: String) -> Res<()>;
     fn drop_buf(&mut self, path: String) -> Res<()>;
     fn save_buf(&mut self, path: String) -> Res<()>;
+    fn send_buf(&mut self, path: String) -> Res<Vec<u8>>;
+}
+
+pub trait ServerTx: ServerFunc {
+    fn handel_messages(
+        &mut self,
+        tx: RPC,
+        client: &mut Client,
+        username: String,
+    ) -> Result<(Message, RPC), ()>;
 }
 
 impl ServerFunc for FileTree {
@@ -346,6 +365,149 @@ impl ServerFunc for FileTree {
                 io::ErrorKind::NotConnected,
                 "file is not opened or not found",
             ))
+        }
+    }
+
+    fn send_buf(&mut self, path: String) -> Res<Vec<u8>> {
+        todo!()
+        // if self.files.binary_search(&path).is_err() {
+        //     return Err(Error::new(
+        //         io::ErrorKind::NotFound,
+        //         "file is not opened or not found",
+        //     ));
+        // }
+        // if let Some(x) = self.tree.get(&path) {
+        //     let (bin, content_exid) = x
+        //         .get(ROOT, "content")
+        //         .map_err(|_| {
+        //             Error::new(io::ErrorKind::InvalidData, "The file content is not valid")
+        //         })?
+        //         .unwrap(); // todo: the error
+        //     if let Value::Scalar(Cow::Borrowed(ScalarValue::Bytes(bin))) = bin {
+        //         return Ok(bin.to_vec());
+        //     } else {
+        //         return Ok(vec![]);
+        //     }
+        // } else {
+        //     self.open_file(path)?;
+        // }
+        // Ok(())
+    }
+}
+impl ServerTx for FileTree {
+    // add code here
+    fn handel_messages(
+        &mut self,
+        tx: RPC,
+        client: &mut Client,
+        username: String,
+    ) -> Result<(Message, RPC), ()> {
+        match tx {
+            RPC::EditBuffer { .. } | RPC::RequestSaveFile { .. }
+                if client.priviledge == Priviledge::ReadOnly =>
+            {
+                eprintln!("Unauthorized access by user {username}");
+                eprintln!("user trying to edit file without access {username}");
+                Err(())
+            }
+
+            RPC::EditBuffer { path, changes } => {
+                let rpc = RPC::EditBuffer { path, changes };
+                todo!()
+            }
+            RPC::RequestSaveFile { path } => {
+                self.save_buf(path.clone()).map_err(Self::err_msg)?;
+                let rpc = RPC::ServerFileSaved { path };
+                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+            }
+
+            RPC::CreateFile { .. }
+            | RPC::CreateDirectory { .. }
+            | RPC::DeleteFile { .. }
+            | RPC::DeleteDirectory { .. }
+            | RPC::MoveFile { .. }
+            | RPC::MoveDirectory { .. }
+                if client.priviledge == Priviledge::ReadOnly =>
+            {
+                eprintln!("Unauthorized access by user {username}");
+                eprintln!("user trying to edit directory structure without access {username}");
+                Err(())
+            }
+
+            RPC::CreateFile { path } => {
+                self.create_file(path.clone()).map_err(Self::err_msg)?;
+                let rpc = RPC::CreateFile { path };
+                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+            }
+
+            RPC::CreateDirectory { path } => {
+                self.make_dir(path.clone()).map_err(Self::err_msg)?;
+                let rpc = RPC::CreateDirectory { path };
+                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+            }
+
+            RPC::MoveFile { path, new_path } => {
+                self.move_file(path.clone(), new_path.clone())
+                    .map_err(Self::err_msg)?;
+                let rpc = RPC::MoveFile { path, new_path };
+                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+            }
+
+            RPC::MoveDirectory { path, new_path } => {
+                self.move_dir(path.clone(), new_path.clone())
+                    .map_err(Self::err_msg)?;
+                let rpc = RPC::MoveDirectory { path, new_path };
+                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+            }
+
+            RPC::DeleteFile { path } => {
+                self.rm_file(path.clone()).map_err(Self::err_msg)?;
+                let rpc = RPC::DeleteFile { path };
+                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+            }
+
+            RPC::DeleteDirectory { path } => {
+                self.rm_dir(path.clone()).map_err(Self::err_msg)?;
+                let rpc = RPC::DeleteDirectory { path };
+                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+            }
+
+            RPC::RequestMark {
+                path,
+                s_position,
+                e_position,
+            } => {
+                let rpc = RPC::Mark {
+                    path,
+                    s_position,
+                    e_position,
+                    username,
+                };
+                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+            }
+
+            RPC::ClientMoveCursor { path, position } => {
+                let rpc = RPC::ResMoveCursor {
+                    username,
+                    path,
+                    position,
+                };
+                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+            }
+
+            RPC::RequestReadBuffer { path } => {
+                let rpc = RPC::ServerSendFile {
+                    path: path.clone(),
+                    file: self.send_buf(path).map_err(Self::err_msg)?,
+                };
+                // client.send_message(rpc.encode().map_err(Self::err_msg)?);
+                todo!()
+            }
+
+            e => {
+                println!("unhandled message {:?}", e);
+                Err(())
+            }
         }
     }
 }

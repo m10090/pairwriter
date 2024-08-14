@@ -1,11 +1,12 @@
 use automerge::transaction::Transactable;
 use automerge::Automerge;
 use std::collections::HashMap;
+use std::error::Error;
 use std::path::Path;
 
 #[derive(Debug, Clone)]
 pub struct FileTree {
-    tree: HashMap<String, Automerge>,
+    pub tree: HashMap<String, Automerge>,
     files: Vec<String>, // this is not efficient but I don't care
     emty_dirs: Vec<String>, // take care when working with emty_dirs
                         // Every operation on emty_dirs will be commented with EMTY_DIRS_OP
@@ -68,6 +69,9 @@ impl FileTree {
             .unwrap_or("./")
             .to_string()
             + "/"
+    }
+    fn err_msg(e: impl Error) {
+        eprintln!("{}", e);
     }
 }
 pub mod client_crdt;

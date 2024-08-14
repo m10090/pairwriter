@@ -2,8 +2,9 @@ mod client;
 mod communication;
 mod integration_testing;
 mod server;
-use std::env::args;
-use tokio;
+use std::{env::args, iter::Enumerate, mem};
+
+use communication::rpc::RPC;
 
 #[tokio::main]
 async fn main() {
@@ -15,8 +16,12 @@ async fn main() {
         "server" => {
             let port = args[2].parse().unwrap();
             drop(args);
-            #[cfg(feature = "integration_testing")] // this for integration testing
-            tokio::spawn(integration_testing::run_test());
+            #[cfg(feature = "integration_testing_server")]
+            {
+                // this for integration testing
+                use tokio;
+                tokio::spawn(integration_testing::run_test());
+            }
             server::start_server(port).await; // here panic is wanted
         }
         "client" => {
@@ -26,12 +31,17 @@ async fn main() {
             let url = args.get(2).unwrap().to_string();
             let username = args.get(3).unwrap().to_string();
             drop(args);
-            #[cfg(feature = "integration_testing_client")] // this for integration testing
-            tokio::spawn(integration_testing::run_test());
+            #[cfg(feature = "integration_testing_client")]
+            {
+                // this for integration testing
+                use tokio;
+                tokio::spawn(integration_testing::run_test());
+            }
             client::connect_as_client(url, username).await;
         }
         _ => {
             panic!("Usage: (client|server) <port>")
-        },
+        }
     }
 }
+

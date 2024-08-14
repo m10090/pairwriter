@@ -1,0 +1,6 @@
+- handel client transaction
+    - client messaging abstraction 
+    - client transaction handling
+- write better tests
+- check for posible refactoring
+- rewrite tests names

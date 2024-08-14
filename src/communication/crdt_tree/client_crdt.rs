@@ -2,8 +2,10 @@ use super::*;
 use std::io::Result as Res;
 use std::io::{self, Error};
 use std::path::Path;
+use macros::conditional_pub;
 
-pub trait ClientFunc {
+#[conditional_pub(test)]
+trait ClientFunc {
     /// this opens a file and returns a reference to the file
     fn open_file(&mut self, filename: String) -> Res<&Automerge>;
     /// load the file from the Server

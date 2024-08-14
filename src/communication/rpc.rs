@@ -18,7 +18,7 @@ pub enum RPC {
         path: String,
         position: usize,
     },
-    ServerMoveCursor {
+    ResMoveCursor {
         username: String,
         path: String,
         position: usize,
@@ -54,7 +54,7 @@ pub enum RPC {
         path: String,
         new_path: String,
     },
-    ClientRequestSaveFile {
+    RequestSaveFile {
         path: String,
     },
     ServerFileSaved{

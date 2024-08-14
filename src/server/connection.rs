@@ -1,4 +1,4 @@
-use crate::communication::crdt_tree::{self, server_crdt::ServerFunc};
+use crate::communication::crdt_tree::{FileTree, server_crdt::ServerTx};
 use crate::communication::rpc::RPC;
 use futures::{future::select_ok, SinkExt, StreamExt};
 use lazy_static::lazy_static;
@@ -10,25 +10,26 @@ use tokio::{
 };
 use tokio_tungstenite::{accept_async, tungstenite::Message, WebSocketStream};
 
-type Username = String;
 lazy_static! {
-    static ref QUEUE: Mutex<HashMap<Username, Client>> = Mutex::new(HashMap::new());
+    static ref QUEUE: Mutex<HashMap<String, Client>> = Mutex::new(HashMap::new());
 }
 static TX: OnceLock<mpsc::UnboundedSender<Message>> = OnceLock::new();
+
 
 #[cfg(debug_assertions)]
 pub async fn is_queue_empty() -> bool {
     QUEUE.lock().await.is_empty()
 }
+
 #[derive(Debug, PartialEq)]
-enum Priviledge {
+pub enum Priviledge {
     ReadOnly, // TODO: improve this priviledge
     ReadWrite,
 }
 
 #[derive(Debug)]
-struct Client {
-    priviledge: Priviledge,
+pub struct Client {
+    pub priviledge: Priviledge,
     ws_stream: WebSocketStream<TcpStream>,
     open: bool,
 }
@@ -50,7 +51,7 @@ impl Client {
     fn check_message(&self, message: Message) -> Result<(RPC, Message), String> {
         let message_vec = message.clone().into_data();
         let rpc = RPC::decode(&message_vec).unwrap_or_else(|err| {
-            return RPC::Error(err.to_string());
+            RPC::Error(err.to_string())
         });
         match rpc {
             RPC::DeleteFile { .. }
@@ -68,6 +69,7 @@ impl Client {
 
             _ => Ok((rpc, message)),
         }
+        // to do add the file tree commands 
     }
     pub async fn read_message(&mut self) -> Result<(RPC, Message), String> {
         let ws_stream = &mut self.ws_stream;
@@ -142,8 +144,10 @@ async fn read_message_from_clients() -> Result<Message, String> {
     let mut futrs = Vec::with_capacity(queue.len());
     if queue.is_empty() {
         drop(queue); // free the lock
+
         use tokio::time::{sleep, Duration};
         sleep(Duration::from_millis(200)).await;
+
         return Err("No clients connected".to_string());
     }
     // read message from all clients
@@ -155,7 +159,6 @@ async fn read_message_from_clients() -> Result<Message, String> {
         Ok((message, _)) => Ok(message),
         Err(e) => Err(e),
     };
-    dbg!(&res);
 
     if res.is_err() {
         // don't forget the free the queue
