@@ -1,15 +1,12 @@
-use core::panic;
 use std::{
     borrow::Cow,
     fs::{self, File},
     io::{self, Error, Result as Res},
-    mem,
 };
 
 use crate::server::connection::{Client, Priviledge};
-use automerge::{transaction::Transactable, ReadDoc, ROOT};
-use futures::task::waker;
-use tokio_tungstenite::tungstenite::{client, Message};
+use automerge::{transaction::Transactable, ReadDoc, ScalarValue, Value, ROOT};
+use tokio_tungstenite::tungstenite::Message;
 
 use super::*;
 use crate::communication::rpc::RPC;
@@ -21,23 +18,33 @@ trait ServerFunc {
     fn open_file(&mut self, path: String) -> Res<()>;
     fn create_file(&mut self, path: String) -> Res<()>;
     fn move_file(&mut self, old_path: String, new_path: String) -> Res<()>;
-    fn rm_file(&mut self, path: String) -> Res<()>;
-    // dir operations
-    fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()>;
+
+    fn rm_file(&mut self, path: String) -> Res<()>; // dir operations
+
+    fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()>; // dir operation
     fn rm_dir(&mut self, path: String) -> Res<()>;
     fn make_dir(&mut self, path: String) -> Res<()>;
-    fn drop_buf(&mut self, path: String) -> Res<()>;
+    // can't find a way to use it
+    fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()>;
+
+
+
+
+
     fn save_buf(&mut self, path: String) -> Res<()>;
-    fn send_buf(&mut self, path: String) -> Res<Vec<u8>>;
+
+    fn read_buf(&mut self, path: String) -> Res<Vec<u8>> ;
+
 }
 
 pub trait ServerTx: ServerFunc {
-    fn handel_messages(
+    fn build_file_tree() -> Self;
+    async fn handel_messages(
         &mut self,
         tx: RPC,
         client: &mut Client,
         username: String,
-    ) -> Result<(Message, RPC), ()>;
+    ) -> Result<Message, ()>;
 }
 
 impl ServerFunc for FileTree {
@@ -179,6 +186,7 @@ impl ServerFunc for FileTree {
         }
         Ok(())
     }
+
     fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()> {
         if !(Self::valid_dir_path(&new_path) && Self::valid_dir_path(&old_path)) {
             return Err(Error::new(
@@ -236,7 +244,10 @@ impl ServerFunc for FileTree {
 
         let new_files: Vec<String> = files
             .drain(start..end)
-            .map(|s| s.replacen(&old_path, &new_path, 1)) // replacen is a must
+            .map(|s| {
+                self.tree.remove(&s);
+                s.replacen(&old_path, &new_path, 1)
+            }) // replacen is a must
             // make sure to replace the old_path with the new_path for the frist string
             .collect::<Vec<String>>();
 
@@ -251,6 +262,7 @@ impl ServerFunc for FileTree {
 
         Ok(())
     }
+
     fn rm_dir(&mut self, path: String) -> Res<()> {
         if !self.in_dir(&path) {
             return Err(Error::new(
@@ -287,7 +299,10 @@ impl ServerFunc for FileTree {
         #[cfg(not(test))]
         fs::remove_dir_all(&path)?;
 
-        files.drain(start..end);
+        files.drain(start..end).for_each(|s| {
+            self.tree.remove(&s);
+            drop(s);
+        });
         Ok(())
     }
     /// should be ending with '/'
@@ -326,16 +341,8 @@ impl ServerFunc for FileTree {
 
         Ok(())
     }
-    fn drop_buf(&mut self, path: String) -> Res<()> {
-        if self.files.binary_search(&path).is_ok() && self.tree.remove(&path).is_some() {
-            Ok(())
-        } else {
-            Err(Error::new(
-                io::ErrorKind::NotConnected,
-                "file is not opened or not found",
-            ))
-        }
-    }
+
+
     fn save_buf(&mut self, path: String) -> Res<()> {
         if self.files.binary_search(&path).is_err() {
             return Err(Error::new(
@@ -368,40 +375,88 @@ impl ServerFunc for FileTree {
         }
     }
 
-    fn send_buf(&mut self, path: String) -> Res<Vec<u8>> {
-        todo!()
-        // if self.files.binary_search(&path).is_err() {
-        //     return Err(Error::new(
-        //         io::ErrorKind::NotFound,
-        //         "file is not opened or not found",
-        //     ));
-        // }
-        // if let Some(x) = self.tree.get(&path) {
-        //     let (bin, content_exid) = x
-        //         .get(ROOT, "content")
-        //         .map_err(|_| {
-        //             Error::new(io::ErrorKind::InvalidData, "The file content is not valid")
-        //         })?
-        //         .unwrap(); // todo: the error
-        //     if let Value::Scalar(Cow::Borrowed(ScalarValue::Bytes(bin))) = bin {
-        //         return Ok(bin.to_vec());
-        //     } else {
-        //         return Ok(vec![]);
-        //     }
-        // } else {
-        //     self.open_file(path)?;
-        // }
-        // Ok(())
+
+
+    fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()> {
+        // here error should be sent but in the case of client there shouldn't be any erros
+        if self.files.binary_search(&path).is_err() {
+            return Err(Error::new(
+                io::ErrorKind::NotFound,
+                "File Not Found",
+            ));
+        }
+        if let Some(file) = self.tree.get_mut(&path) {
+            file.apply_changes(changes)
+                .map_err(Self::err_msg)
+                .map_err(|_| Error::new(io::ErrorKind::InvalidData, "Can't merge"))?;
+            Ok(())
+        } else {
+            Err(Error::new(
+                io::ErrorKind::NotConnected,
+                "file is not opened or not found",
+            ))
+        }
+    }
+    
+    fn read_buf(&mut self, path: String) -> Res<Vec<u8>> 
+{
+        if self.files.binary_search(&path).is_err() {
+            return Err(Error::new(
+                io::ErrorKind::NotFound,
+                "file is not opened or not found",
+            ));
+        }
+        if let Some(x) = self.tree.get(&path) {
+            let (bin, _content_exid) = x
+                .get(ROOT, "content")
+                .map_err(|_| {
+                    Error::new(io::ErrorKind::InvalidData, "The file content is not valid")
+                })?
+                .unwrap(); // todo: the error
+            if let Value::Scalar(Cow::Borrowed(ScalarValue::Bytes(bin))) = bin {
+                Ok(bin.to_vec())
+            } else {
+                Ok(vec![])
+            }
+        } else {
+            self.open_file(path.clone())?;
+            self.read_buf(path)
+        }
     }
 }
+
 impl ServerTx for FileTree {
-    // add code here
-    fn handel_messages(
+    fn build_file_tree() -> Self {
+        // get all files
+        use walkdir::WalkDir;
+        let mut files = WalkDir::new("./")
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_file())
+            .map(|e| e.path().display().to_string())
+            .collect::<Vec<String>>();
+        files.sort();
+        let mut res = Self {
+            files,
+            tree: HashMap::new(),
+            emty_dirs: Vec::new(),
+        };
+        let emty_dirs = WalkDir::new("./")
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_type().is_dir())
+            .map(|e| e.path().display().to_string() + "/")
+            .filter(|e| !res.in_dir(e))
+            .collect::<Vec<String>>();
+        res.emty_dirs = emty_dirs;
+        res
+    }
+    async fn handel_messages(
         &mut self,
         tx: RPC,
         client: &mut Client,
         username: String,
-    ) -> Result<(Message, RPC), ()> {
+    ) -> Result<Message, ()> {
         match tx {
             RPC::EditBuffer { .. } | RPC::RequestSaveFile { .. }
                 if client.priviledge == Priviledge::ReadOnly =>
@@ -412,13 +467,21 @@ impl ServerTx for FileTree {
             }
 
             RPC::EditBuffer { path, changes } => {
+                let changes_arr = changes
+                    .clone()
+                    .into_iter()
+                    .map(|x: Vec<u8>| automerge::Change::from_bytes(x).map_err(Self::err_msg))
+                    .collect::<Result<Vec<automerge::Change>, _>>()?;
+                self.edit_buf(path.clone(), changes_arr)
+                    .map_err(Self::err_msg)?;
+
                 let rpc = RPC::EditBuffer { path, changes };
-                todo!()
+                Ok(rpc.encode().map_err(Self::err_msg)?)
             }
             RPC::RequestSaveFile { path } => {
                 self.save_buf(path.clone()).map_err(Self::err_msg)?;
                 let rpc = RPC::ServerFileSaved { path };
-                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+                Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
             RPC::CreateFile { .. }
@@ -437,39 +500,39 @@ impl ServerTx for FileTree {
             RPC::CreateFile { path } => {
                 self.create_file(path.clone()).map_err(Self::err_msg)?;
                 let rpc = RPC::CreateFile { path };
-                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+                Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
             RPC::CreateDirectory { path } => {
                 self.make_dir(path.clone()).map_err(Self::err_msg)?;
                 let rpc = RPC::CreateDirectory { path };
-                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+                Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
             RPC::MoveFile { path, new_path } => {
                 self.move_file(path.clone(), new_path.clone())
                     .map_err(Self::err_msg)?;
                 let rpc = RPC::MoveFile { path, new_path };
-                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+                Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
             RPC::MoveDirectory { path, new_path } => {
                 self.move_dir(path.clone(), new_path.clone())
                     .map_err(Self::err_msg)?;
                 let rpc = RPC::MoveDirectory { path, new_path };
-                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+                Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
             RPC::DeleteFile { path } => {
                 self.rm_file(path.clone()).map_err(Self::err_msg)?;
                 let rpc = RPC::DeleteFile { path };
-                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+                Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
             RPC::DeleteDirectory { path } => {
                 self.rm_dir(path.clone()).map_err(Self::err_msg)?;
                 let rpc = RPC::DeleteDirectory { path };
-                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+                Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
             RPC::RequestMark {
@@ -483,7 +546,7 @@ impl ServerTx for FileTree {
                     e_position,
                     username,
                 };
-                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+                Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
             RPC::ClientMoveCursor { path, position } => {
@@ -492,22 +555,40 @@ impl ServerTx for FileTree {
                     path,
                     position,
                 };
-                Ok((rpc.encode().map_err(Self::err_msg)?, rpc))
+                Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
             RPC::RequestReadBuffer { path } => {
                 let rpc = RPC::ServerSendFile {
                     path: path.clone(),
-                    file: self.send_buf(path).map_err(Self::err_msg)?,
+                    file: self.read_buf(path).map_err(Self::err_msg)?,
                 };
-                // client.send_message(rpc.encode().map_err(Self::err_msg)?);
-                todo!()
+                client
+                    .send_message(rpc.encode().map_err(Self::err_msg)?)
+                    .await
+                    .map_err(Self::err_msg)?; // await is needed as I think
+
+                Ok(Message::binary(vec![]))
             }
 
             e => {
                 println!("unhandled message {:?}", e);
                 Err(())
             }
+        }
+    }
+}
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn sup_test() {
+        let res = FileTree::build_file_tree();
+        for i in res.emty_dirs.iter() {
+            assert!(FileTree::valid_dir_path(i));
+        }
+        for i in res.files.iter() {
+            assert!(File::open(i).is_ok());
         }
     }
 }

@@ -1,4 +1,6 @@
 
+use std::collections::HashMap;
+
 use super::{server_crdt::ServerFunc, FileTree};
 use ctor::ctor;
 
@@ -62,5 +64,19 @@ where
 {
     assert!(res.is_err(), "{:?}", res.ok().unwrap());
 }
+impl FileTree {
+    pub fn new(mut files: Vec<String>, mut emty_dirs: Vec<String>) -> Self {
+        let tree = HashMap::new();
+        files.sort_unstable();
+        emty_dirs.sort_unstable();
+        Self {
+            tree,
+            files,
+            emty_dirs,
+        }
+    }
+}
+
 mod server_dir_test; 
 mod server_files_test;
+

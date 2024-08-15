@@ -1,6 +1,12 @@
-use tokio::net::TcpListener;
+use tokio::{net::TcpListener, sync::Mutex};
 pub mod connection;
+use lazy_static::lazy_static;
 
+use crate::communication::crdt_tree::FileTree;
+
+// lazy_static!{
+//     static ref CRDT: Mutex<FileTree> = Mutex::new();
+// }
 pub async fn start_server(port: u16) {
     let url = format!("127.0.0.1:{}", port);
     let listener = TcpListener::bind(&url).await.unwrap(); // panic is needed

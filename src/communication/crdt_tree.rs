@@ -1,7 +1,7 @@
 use automerge::transaction::Transactable;
 use automerge::Automerge;
 use std::collections::HashMap;
-use std::error::Error;
+use std::io::Error;
 use std::path::Path;
 
 #[derive(Debug, Clone)]
@@ -12,16 +12,6 @@ pub struct FileTree {
                         // Every operation on emty_dirs will be commented with EMTY_DIRS_OP
 }
 impl FileTree {
-    pub fn new(mut files: Vec<String>, mut emty_dirs: Vec<String>) -> Self {
-        let tree = HashMap::new();
-        files.sort_unstable();
-        emty_dirs.sort_unstable();
-        Self {
-            tree,
-            files,
-            emty_dirs,
-        }
-    }
     /// to work right you need to have the dir_path with ending with '/'
     /// returns `true` of the dir_path is in the tree otherwise `false`
     fn in_dir(&self, dir_path: &String) -> bool {
@@ -70,12 +60,12 @@ impl FileTree {
             .to_string()
             + "/"
     }
-    fn err_msg(e: impl Error) {
+    fn err_msg(e: impl std::fmt::Display) {
         eprintln!("{}", e);
     }
 }
 pub mod client_crdt;
 pub mod server_crdt;
+pub mod buf_func;
 #[cfg(test)]
 pub mod tests;
-

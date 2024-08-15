@@ -2,9 +2,8 @@ mod client;
 mod communication;
 mod integration_testing;
 mod server;
-use std::{env::args, iter::Enumerate, mem};
+use std::env::args;
 
-use communication::rpc::RPC;
 
 #[tokio::main]
 async fn main() {
@@ -44,4 +43,3 @@ async fn main() {
         }
     }
 }
-
