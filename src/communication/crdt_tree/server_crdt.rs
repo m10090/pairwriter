@@ -27,14 +27,9 @@ trait ServerFunc {
     // can't find a way to use it
     fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()>;
 
-
-
-
-
     fn save_buf(&mut self, path: String) -> Res<()>;
 
-    fn read_buf(&mut self, path: String) -> Res<Vec<u8>> ;
-
+    fn read_buf(&mut self, path: String) -> Res<Vec<u8>>;
 }
 
 pub trait ServerTx: ServerFunc {
@@ -43,7 +38,7 @@ pub trait ServerTx: ServerFunc {
         &mut self,
         tx: RPC,
         client: &mut Client,
-        username: String,
+        username: &String,
     ) -> Result<Message, ()>;
 }
 
@@ -342,7 +337,6 @@ impl ServerFunc for FileTree {
         Ok(())
     }
 
-
     fn save_buf(&mut self, path: String) -> Res<()> {
         if self.files.binary_search(&path).is_err() {
             return Err(Error::new(
@@ -375,15 +369,10 @@ impl ServerFunc for FileTree {
         }
     }
 
-
-
     fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()> {
         // here error should be sent but in the case of client there shouldn't be any erros
         if self.files.binary_search(&path).is_err() {
-            return Err(Error::new(
-                io::ErrorKind::NotFound,
-                "File Not Found",
-            ));
+            return Err(Error::new(io::ErrorKind::NotFound, "File Not Found"));
         }
         if let Some(file) = self.tree.get_mut(&path) {
             file.apply_changes(changes)
@@ -397,9 +386,8 @@ impl ServerFunc for FileTree {
             ))
         }
     }
-    
-    fn read_buf(&mut self, path: String) -> Res<Vec<u8>> 
-{
+
+    fn read_buf(&mut self, path: String) -> Res<Vec<u8>> {
         if self.files.binary_search(&path).is_err() {
             return Err(Error::new(
                 io::ErrorKind::NotFound,
@@ -407,17 +395,7 @@ impl ServerFunc for FileTree {
             ));
         }
         if let Some(x) = self.tree.get(&path) {
-            let (bin, _content_exid) = x
-                .get(ROOT, "content")
-                .map_err(|_| {
-                    Error::new(io::ErrorKind::InvalidData, "The file content is not valid")
-                })?
-                .unwrap(); // todo: the error
-            if let Value::Scalar(Cow::Borrowed(ScalarValue::Bytes(bin))) = bin {
-                Ok(bin.to_vec())
-            } else {
-                Ok(vec![])
-            }
+            Ok(x.save())
         } else {
             self.open_file(path.clone())?;
             self.read_buf(path)
@@ -455,7 +433,7 @@ impl ServerTx for FileTree {
         &mut self,
         tx: RPC,
         client: &mut Client,
-        username: String,
+        username: &String,
     ) -> Result<Message, ()> {
         match tx {
             RPC::EditBuffer { .. } | RPC::RequestSaveFile { .. }
@@ -474,7 +452,6 @@ impl ServerTx for FileTree {
                     .collect::<Result<Vec<automerge::Change>, _>>()?;
                 self.edit_buf(path.clone(), changes_arr)
                     .map_err(Self::err_msg)?;
-
                 let rpc = RPC::EditBuffer { path, changes };
                 Ok(rpc.encode().map_err(Self::err_msg)?)
             }
@@ -544,14 +521,14 @@ impl ServerTx for FileTree {
                     path,
                     s_position,
                     e_position,
-                    username,
+                    username: username.clone(),
                 };
                 Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
             RPC::ClientMoveCursor { path, position } => {
                 let rpc = RPC::ResMoveCursor {
-                    username,
+                    username: username.clone(),
                     path,
                     position,
                 };
@@ -582,7 +559,7 @@ impl ServerTx for FileTree {
 mod test {
     use super::*;
     #[test]
-    fn sup_test() {
+    fn right_naming() {
         let res = FileTree::build_file_tree();
         for i in res.emty_dirs.iter() {
             assert!(FileTree::valid_dir_path(i));
