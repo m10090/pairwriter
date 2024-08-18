@@ -23,7 +23,7 @@ jobs:
   server: # using a new env is better due to the file changes
       runs-on: ubuntu-latest
       steps: 
-      - uses: actions/checout@v4
+      - uses: actions/checkout@v4
       - name: Build
         run: cargo build --verbose
       - name: run server

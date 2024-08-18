@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 
 # Setting default values for the port
 if [[ -z "$port" ]]; then

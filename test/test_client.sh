@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 
 # Setting default values
 if [[ -z "$url" ]]; then
