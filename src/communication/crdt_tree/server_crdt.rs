@@ -1,11 +1,11 @@
+use crate::server::connection::{Client, Priviledge};
+use automerge::{transaction::Transactable, ReadDoc, ROOT};
 use std::{
     borrow::Cow,
     fs::{self, File},
-    io::{self, Error, Result as Res}, ops::{BitAnd, Not},
+    io::{self, Error, Result as Res},
 };
 
-use crate::server::connection::{Client, Priviledge};
-use automerge::{transaction::Transactable, ReadDoc, ScalarValue, Value, ROOT};
 use tokio_tungstenite::tungstenite::Message;
 
 use super::*;
