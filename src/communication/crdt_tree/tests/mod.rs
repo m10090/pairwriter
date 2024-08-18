@@ -65,18 +65,6 @@ fn assert_vec(ft: FileTree, files: Option<&[String]>, emty_dirs: Option<&[String
     f(&ft.files, files);
     f(&ft.emty_dirs, emty_dirs);
 }
-fn assert_ok<T, E>(res: Result<T, E>)
-where
-    E: std::fmt::Debug,
-{
-    assert!(res.is_ok(), "{:?}", res.err().unwrap());
-}
-fn expected_err<T, E>(res: Result<T, E>)
-where
-    T: std::fmt::Debug,
-{
-    assert!(res.is_err(), "{:?}", res.ok().unwrap());
-}
 impl FileTree {
     pub fn new(mut files: Vec<String>, mut emty_dirs: Vec<String>) -> Self {
         let tree = HashMap::new();

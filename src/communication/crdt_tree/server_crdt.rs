@@ -1,7 +1,7 @@
 use std::{
     borrow::Cow,
     fs::{self, File},
-    io::{self, Error, Result as Res},
+    io::{self, Error, Result as Res}, ops::{BitAnd, Not},
 };
 
 use crate::server::connection::{Client, Priviledge};
@@ -425,13 +425,27 @@ impl ServerTx for FileTree {
             tree: HashMap::new(),
             emty_dirs: Vec::new(),
         };
-        let emty_dirs = WalkDir::new("./")
+        fn is_directory_empty(path: &str) -> Res<bool> {
+            let mut entries = fs::read_dir(path)?;
+            Ok(entries.next().is_none())
+        }
+        let mut emty_dirs = WalkDir::new("./")
             .into_iter()
             .filter_map(|e| e.ok())
             .filter(|e| e.file_type().is_dir())
-            .map(|e| e.path().display().to_string() + "/")
-            .filter(|e| !res.in_dir(e))
+            .map(|e| e.path().display().to_string() + "/") // this result in problems is "./"
+            // directory
+            .filter(|e| is_directory_empty(e).unwrap_or(false))
             .collect::<Vec<String>>();
+        // this is the fix of the "./" problem
+        if let Ok(i) = emty_dirs.binary_search(&".//".to_string()) {
+            emty_dirs.remove(i);
+        }
+        if is_directory_empty("./").unwrap() {
+            if let Err(i) = emty_dirs.binary_search(&"./".to_string()) {
+                emty_dirs.insert(i, "./".to_string());
+            }
+        }
         res.emty_dirs = emty_dirs;
         res
     }
@@ -563,15 +577,26 @@ impl ServerTx for FileTree {
 }
 #[cfg(test)]
 mod test {
+    use std::panic;
+
     use super::*;
     #[test]
     fn right_naming() {
-        let res = FileTree::build_file_tree();
-        for i in res.emty_dirs.iter() {
-            assert!(FileTree::valid_dir_path(i));
-        }
-        for i in res.files.iter() {
-            assert!(File::open(i).is_ok());
-        }
+        fs::create_dir("./emty_dir/").unwrap();
+        let res = panic::catch_unwind(|| {
+            let res = FileTree::build_file_tree();
+            for i in res.emty_dirs.iter() {
+                assert!(FileTree::valid_dir_path(i));
+            }
+            dbg!(&res.emty_dirs);
+            res.emty_dirs
+                .binary_search(&"./emty_dir/".to_string())
+                .unwrap();
+            for i in res.files.iter() {
+                assert!(File::open(i).is_ok());
+            }
+        });
+        fs::remove_dir("./emty_dir").unwrap();
+        res.unwrap();
     }
 }
