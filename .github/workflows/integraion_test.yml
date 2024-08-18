@@ -17,17 +17,17 @@ jobs:
       - name: Build
         run: cargo build --verbose
       - name: run server 
-        run: cargo run server 8080
+        run: cargo run server 8080 &
       - name: start client test
         run : cd test && ./test_client.sh
   server: # using a new env is better due to the file changes
       runs-on: ubuntu-latest
       steps: 
-      - uses: acctions/checout@v4
+      - uses: actions/checout@v4
       - name: Build
         run: cargo build --verbose
       - name: run server
-        run: cargo run server 8080
+        run: cargo run server 8080 & # don't be like me, and run it in the background
       - name: start client test
         env: 
           test_file: "./CLIENT/CLIENT_TEST_CODE_SNIPPET.rs" 
