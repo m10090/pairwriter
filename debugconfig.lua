@@ -8,7 +8,7 @@ require("dap").configurations.rust = {
 		program = function()
 			return vim.fn.getenv("PROJECT_DIR") .. "/target/debug/shared-programming"
 		end,
-		args = { "client", "127.0.0.1", "test", "--features" }, -- change as needed
+		args = { "server", "8080" },
 		stopOnEntry = false,
 	},
 }

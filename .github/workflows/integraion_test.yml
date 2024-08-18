@@ -1,0 +1,34 @@
+name: Client Integration test 
+# this test is about client send and server responsing
+on: 
+  push:
+    branches: [ "main" ]
+  pull_request: 
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  messaging:
+      runs-on: ubuntu-latest
+      steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: cargo build --verbose
+      - name: run server 
+        run: cargo run server 8080
+      - name: start client test
+        run : cd test && ./test_client.sh
+  server: # using a new env is better due to the file changes
+      runs-on: ubuntu-latest
+      steps: 
+      - uses: acctions/checout@v4
+      - name: Build
+        run: cargo build --verbose
+      - name: run server
+        run: cargo run server 8080
+      - name: start client test
+        env: 
+          test_file: "./CLIENT/CLIENT_TEST_CODE_SNIPPET.rs" 
+        run: cd test && ./test_client.sh 

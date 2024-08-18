@@ -6,9 +6,8 @@ pub async fn run_test(){
         }
         sleep(Duration::from_secs(1)).await;
     }
-    println!("test is running");
+    println!("this_is_running");
     let config = bincode::config::standard();
-    let rpc = RPC::SendFile{ file: vec![1,2,3,34,45,6] };
     let message = rpc.encode()?;
 
     // awaiting message is only for the client and not for the server
@@ -20,7 +19,7 @@ pub async fn run_test(){
 
     crate::server::connection::server_send_message(message).await;
     
-    println!("test is done");
+    println!("Test passed!");
 
 
 }

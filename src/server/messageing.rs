@@ -65,11 +65,11 @@ pub async fn handle_messages() -> ! {
     TX.set(tx).unwrap();
     loop {
         async {
+            println!("waiting for message");
             connection::remove_dead_clients().await;
             let message = tokio::select! {
                 client_message = read_message_from_clients() => client_message?,
                 Some(server_message) = rx.recv() => server_message ,
-
             };
             broadcast_message(message).await?;
             Ok::<(), String>(())

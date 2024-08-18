@@ -6,6 +6,19 @@ use ctor::ctor;
 
 
 #[ctor]
+/** [
+        "./file.txt",
+        "./dir0/dir1/file1.txt",
+        "./dir0/dir1/file2.txt",
+        "./dir0/dir1/subdir/file3.txt",
+        "./dir0/file1.txt",
+        "./dir1/file1.txt",
+        "./dir1/file2.txt",
+        "./dir1/subdir/file3.txt",
+        "./dir2/file4.txt",
+        "./dir3/file1.txt",
+        "./dir_with_one_file/file.txt"
+    ] */
 static FILES: Vec<String> = {
     let mut files = [
         "./file.txt",

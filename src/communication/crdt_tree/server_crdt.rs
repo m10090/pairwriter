@@ -108,6 +108,7 @@ impl ServerFunc for FileTree {
         };
 
         files.insert(i, path);
+        dbg!(&files);
         Ok(())
     }
 
@@ -178,8 +179,13 @@ impl ServerFunc for FileTree {
                 }
             }
             self.tree.remove(&path);
+            Ok(())
+        } else {
+            Err(Error::new(
+                io::ErrorKind::NotFound,
+                "The file does not exist",
+            ))
         }
-        Ok(())
     }
 
     fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()> {

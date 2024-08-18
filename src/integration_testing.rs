@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 // this testing method is not that great and it needs alot of refactoring and cleaning
 // todo: use mspc to defined expected messages
 use crate::communication::rpc::RPC;
@@ -13,12 +15,12 @@ lazy_static! {
 }
 
 lazy_static! {
-    static ref WATING: Mutex<bool> = Mutex::new(false);
+    static ref WATING: Mutex<bool> = Mutex::new(true);
 }
 pub async fn reseived_message(msg: Message) {
     let mut wating = WATING.lock().await;
-    if *wating {
-        eprintln!("message sent out of order")
+    if !*wating {
+        panic!("message sent out of order")
     }
     let expected_message = EXPECTED_MESSAGE.lock().await;
     assert!(
@@ -30,11 +32,15 @@ pub async fn reseived_message(msg: Message) {
     *wating = false;
 }
 pub async fn await_message(msg: Message) {
-    let mut wating = WATING.lock().await;
-    while *wating {
+    loop {
+        let wating = WATING.lock().await;
+        if !*wating {
+            break;
+        }
+        drop(wating);
         sleep(Duration::from_secs(1)).await;
-        wating = WATING.lock().await;
     }
+    let mut wating = WATING.lock().await;
     *wating = true;
     let mut expected_message = EXPECTED_MESSAGE.lock().await;
     *expected_message = msg;
