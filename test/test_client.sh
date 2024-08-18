@@ -1,14 +1,14 @@
 #!/bin/bash
 
 # Setting default values
-if [[ -z "$url" ]]; then
+if [ -z "$url" ]; then
   url="ws://127.0.0.1:8080"
 fi
 
-if [[ -z "$username" ]]; then 
+if [ -z "$username" ]; then 
   username="test"
 fi
-if [[ -z "$file"]]; then 
+if [ -z "$file"]; then 
   file="./CLIENT/CLIENT_CREATE_FILE.rs"
 fi
 
