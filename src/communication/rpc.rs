@@ -7,7 +7,7 @@ use tokio_tungstenite::tungstenite::Message;
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub enum RPC {
     /// buffer operations  these are all read and write operaition
-    RequestReadBuffer {
+    RequestBufferTree {
         path: String,
     },
     EditBuffer {
@@ -24,9 +24,6 @@ pub enum RPC {
         position: usize,
     },
     /// `.` should refer to the Current Working Directory
-    ServerSendTreeFileStructure {
-        tree: Vec<String>,
-    },
     /// send file to the client  
     ServerSendFile {
         path: String,

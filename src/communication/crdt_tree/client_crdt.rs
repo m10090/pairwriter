@@ -1,52 +1,42 @@
+use crate::communication::rpc::RPC;
+
 use super::*;
+use automerge::{ReadDoc, ROOT};
+use bincode::Encode;
 use macros::conditional_pub;
 use std::io::Result as Res;
 use std::io::{self, Error};
 use std::path::Path;
+use tokio_tungstenite::tungstenite::Message;
 
 #[conditional_pub(test)]
 trait ClientFunc {
-    /// this opens a file and returns a reference to the file
-    fn open_file(&mut self, filename: String) -> Res<&Automerge>;
+    /// this opens a file and add it to the tree
     /// load the file from the Server
     fn create_file(&mut self, filename: String) -> Res<()>; // EMTY_DIRS_OP
     /// move the file from old path to the new path
     fn move_file(&mut self, old_path: String, new_path: String) -> Res<()>; //EMTY_DIRS_OP
+    /// remove the file from the tree
+    fn rm_file(&mut self, path: String) -> Res<()>; // EMTY_DIRS_OP
     /// move the directror from old path to the new path
     fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()>; // EMTY_DIRS_OP
     /// remove the directory from the tree
     fn rm_dir(&mut self, path: String) -> Res<()>; // EMTY_DIRS_OP
     /// make a new directory in the tree
     fn make_dir(&mut self, path: String) -> Res<()>; // EMTY_DIRS_OP
-    
 
     fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()>;
-
-
-    fn read_buf(&mut self, path:String) -> Res<Vec<u8>> {
-        todo!()
-    }
+}
+pub trait ClientTx: ClientFunc {
+    fn build_tree(files: Vec<String>, emty_dirs: Vec<String>) -> Self;
+    fn handle_msg(&mut self, tx: Message);
 }
 impl ClientFunc for FileTree {
-    /// get the file if found in the tree else return an error [FileErr]
-    fn open_file(&mut self, filename: String) -> Res<&automerge::Automerge> {
-        let file = self.tree.get(&filename);
-        if file.is_none() && self.files.binary_search(&filename).is_ok() {
-            Err(Error::new(
-                io::ErrorKind::NotConnected,
-                "file not found in the file",
-            )) // this should make the client ask for the file
-        } else {
-            file.ok_or(Error::new(
-                io::ErrorKind::NotConnected,
-                "file not found in the file system tree",
-            ))
-        }
-    }
+    /// add a file to FileTree
 
-    fn create_file(&mut self, filename: String) -> Res<()> {
+    fn create_file(&mut self, path: String) -> Res<()> {
         // you should have a message
-        let parrent_path = Path::new(&filename)
+        let parrent_path = Path::new(&path)
             .parent()
             .unwrap()
             .to_str()
@@ -67,13 +57,13 @@ impl ClientFunc for FileTree {
             Err(i) => emty_dir.insert(i, parrent_path),
         }
 
-        match files.binary_search(&filename) {
+        match files.binary_search(&path) {
             Ok(_) => Err(Error::new(
                 io::ErrorKind::AlreadyExists,
                 "The file already exists",
             )),
             Err(i) => {
-                files.insert(i, filename);
+                files.insert(i, path);
                 Ok(())
             }
         }
@@ -276,10 +266,7 @@ impl ClientFunc for FileTree {
     }
     fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()> {
         if self.files.binary_search(&path).is_err() {
-            return Err(Error::new(
-                io::ErrorKind::NotFound,
-                "File Not Found",
-            ));
+            return Err(Error::new(io::ErrorKind::NotFound, "File Not Found"));
         }
         if let Some(file) = self.tree.get_mut(&path) {
             file.apply_changes(changes)
@@ -287,6 +274,115 @@ impl ClientFunc for FileTree {
                 .map_err(|_| Error::new(io::ErrorKind::InvalidData, "Can't merge"))?;
         }
         Ok(()) // here there is no error that is not the case in server
-        
+    }
+    fn rm_file(&mut self, path: String) -> Res<()> {
+        let files = &mut self.files;
+        if let Ok(i) = files.binary_search(&path) {
+            let path = self.files.remove(i);
+            let dir_path = Self::parent_dir(&path);
+            if !self.in_dir(&dir_path) {
+                // EMTY_DIRS_OP
+                match self.emty_dirs.binary_search(&dir_path) {
+                    Ok(_) => {
+                        unreachable!()
+                    }
+                    Err(i) => {
+                        self.emty_dirs.insert(i, dir_path);
+                    }
+                }
+            }
+            self.tree.remove(&path);
+            Ok(())
+        } else {
+            Err(Error::new(
+                io::ErrorKind::NotFound,
+                "The file does not exist",
+            ))
+        }
+    }
+}
+
+impl ClientTx for FileTree {
+    fn build_tree(mut files: Vec<String>, mut emty_dirs: Vec<String>) -> Self {
+        files.sort_unstable();
+        emty_dirs.sort_unstable();
+        FileTree {
+            files,
+            emty_dirs,
+            tree: HashMap::new(),
+        }
+    }
+    fn handle_msg(&mut self, tx: Message) {
+        let message = match tx {
+            Message::Binary(msg) => msg,
+            _ => {
+                eprintln!("Invalid Message");
+                return;
+            }
+        };
+        let rpc = match RPC::decode(&message) {
+            Ok(r) => r,
+            Err(_) => {
+                eprintln!("Invalid RPC");
+                return;
+            }
+        };
+        match rpc {
+            RPC::Mark {
+                path,
+                s_position,
+                e_position,
+                username,
+            } => {
+                todo!() // should call the api of user
+            }
+            RPC::EditBuffer { path, changes } => {
+                if let Some(file) = self.tree.get_mut(&path) {
+                    use automerge::Change;
+                    let changes = changes
+                        .into_iter()
+                        .map(|c| Change::from_bytes(c).unwrap())
+                        .collect::<Vec<Change>>();
+                    file.apply_changes(changes)
+                        .map_err(Self::err_msg)
+                        .map_err(|_| Error::new(io::ErrorKind::InvalidData, "Can't merge"))
+                        .unwrap_or_else(|e| eprintln!("{}", e));
+                }
+            }
+            RPC::CreateFile { path } => {
+                self.create_file(path)
+                    .unwrap_or_else(|e| eprintln!("{}", e));
+            }
+            RPC::MoveFile { path, new_path } => {
+                self.move_file(path, new_path)
+                    .unwrap_or_else(|e| eprintln!("{}", e));
+            }
+            RPC::DeleteFile { path } => {
+                self.rm_file(path).unwrap_or_else(|e| eprintln!("{}", e));
+            }
+            RPC::CreateDirectory { path } => {
+                self.make_dir(path).unwrap_or_else(|e| eprintln!("{}", e));
+            }
+            RPC::MoveDirectory { path, new_path } => {
+                self.move_dir(path, new_path)
+                    .unwrap_or_else(|e| eprintln!("{}", e));
+            }
+            RPC::DeleteDirectory { path } => {
+                self.rm_dir(path).unwrap_or_else(|e| eprintln!("{}", e));
+            }
+            RPC::RequestSaveFile { path } => todo!(), // should call the api to remove the dirty
+            // bit
+            RPC::ServerSendFile { path, file } => {
+                self.tree
+                    .insert(path, automerge::Automerge::load(file.as_slice()).unwrap());
+            }
+            RPC::ResMoveCursor {
+                username,
+                path,
+                position,
+            } => todo!(),
+
+            m => eprintln!("Invalid RPC message {m:?}"),
+        }
     }
 }

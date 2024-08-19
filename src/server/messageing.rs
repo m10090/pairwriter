@@ -39,7 +39,7 @@ async fn read_message_from_clients() -> Result<Message, String> {
             FILETREE
                 .lock()
                 .await
-                .handel_messages(rpc, client, username)
+                .handel_msg(rpc, client, username)
                 .await
                 .map_err(|_| "error happend".to_string())
         }));

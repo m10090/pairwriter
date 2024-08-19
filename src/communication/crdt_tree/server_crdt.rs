@@ -3,7 +3,7 @@ use automerge::{transaction::Transactable, ReadDoc, ROOT};
 use std::{
     borrow::Cow,
     fs::{self, File},
-    io::{self, Error, Result as Res},
+    io::{self, Error, Result as Res, Write},
 };
 
 use tokio_tungstenite::tungstenite::Message;
@@ -15,6 +15,7 @@ use macros::conditional_pub;
 
 #[conditional_pub(test)]
 trait ServerFunc {
+    /// add file to the tree
     fn open_file(&mut self, path: String) -> Res<()>;
     fn create_file(&mut self, path: String) -> Res<()>;
     fn move_file(&mut self, old_path: String, new_path: String) -> Res<()>;
@@ -24,17 +25,15 @@ trait ServerFunc {
     fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()>; // dir operation
     fn rm_dir(&mut self, path: String) -> Res<()>;
     fn make_dir(&mut self, path: String) -> Res<()>;
-    // can't find a way to use it
     fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()>;
 
     fn save_buf(&mut self, path: String) -> Res<()>;
-
-    fn read_buf(&mut self, path: String) -> Res<Vec<u8>>;
+    fn get_automerge(&mut self, path: &String) -> Res<Vec<u8>>;
 }
 
 pub trait ServerTx: ServerFunc {
     fn build_file_tree() -> Self;
-    async fn handel_messages(
+    async fn handel_msg(
         &mut self,
         tx: RPC,
         client: &mut Client,
@@ -345,27 +344,9 @@ impl ServerFunc for FileTree {
 
     fn save_buf(&mut self, path: String) -> Res<()> {
         if self.files.binary_search(&path).is_err() {
-            return Err(Error::new(
-                io::ErrorKind::NotFound,
-                "file is not opened or not found",
-            ));
-        }
-        if let Some(file) = self.tree.get(&path) {
-            use automerge::{ScalarValue, Value};
-            let (bin, content_exid) = file
-                .get(ROOT, "content")
-                .map_err(|_| {
-                    Error::new(io::ErrorKind::InvalidData, "The file content is not valid")
-                })?
-                .unwrap(); // todo: the error
-            if let Ok(text) = file.text(content_exid) {
-                fs::write(&path, text)?;
-            } else if let Value::Scalar(Cow::Borrowed(ScalarValue::Bytes(bin))) = bin {
-                // todo: check this
-                fs::write(&path, bin)?;
-            } else {
-                fs::write(&path, vec![])?;
-            }
+            Err(Error::new(io::ErrorKind::NotFound, "file is or not found"))
+        } else if let Some(_file) = self.tree.get(&path) {
+            File::create(&path)?.write_all(self.read_buf(path)?.as_slice())?;
             Ok(())
         } else {
             Err(Error::new(
@@ -393,18 +374,17 @@ impl ServerFunc for FileTree {
         }
     }
 
-    fn read_buf(&mut self, path: String) -> Res<Vec<u8>> {
+    fn get_automerge(&mut self, path: &String) -> Res<Vec<u8>> {
         if self.files.binary_search(&path).is_err() {
-            return Err(Error::new(
-                io::ErrorKind::NotFound,
-                "file is not opened or not found",
-            ));
+            Err(Error::new(io::ErrorKind::NotFound, "file is or not found"))
         }
-        if let Some(x) = self.tree.get(&path) {
-            Ok(x.save())
+        else if let Some(file) = self.tree.get(path) {
+            Ok(file.save())
         } else {
-            self.open_file(path.clone())?;
-            self.read_buf(path)
+            Err(Error::new(
+                io::ErrorKind::NotConnected,
+                "file is not opened or not found",
+            )) // this should be an error as the file is not opened
         }
     }
 }
@@ -449,7 +429,7 @@ impl ServerTx for FileTree {
         res.emty_dirs = emty_dirs;
         res
     }
-    async fn handel_messages(
+    async fn handel_msg(
         &mut self,
         tx: RPC,
         client: &mut Client,
@@ -555,10 +535,12 @@ impl ServerTx for FileTree {
                 Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
-            RPC::RequestReadBuffer { path } => {
+            RPC::RequestBufferTree { path } => {
+                let file = self.get_automerge(&path).map_err(Self::err_msg)?;
+
                 let rpc = RPC::ServerSendFile {
-                    path: path.clone(),
-                    file: self.read_buf(path).map_err(Self::err_msg)?,
+                    path, 
+                    file,
                 };
                 client
                     .send_message(rpc.encode().map_err(Self::err_msg)?)

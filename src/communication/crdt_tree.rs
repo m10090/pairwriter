@@ -67,5 +67,6 @@ impl FileTree {
 pub mod client_crdt;
 pub mod server_crdt;
 pub mod buf_func;
+
 #[cfg(test)]
 pub mod tests;

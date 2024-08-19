@@ -6,6 +6,7 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 pub mod messaging;
 
+use crate::communication::crdt_tree::FileTree;
 use crate::communication::rpc::RPC;
 
 type WriterWsStream = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
@@ -13,6 +14,8 @@ type WriterWsStream = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Mess
 type ReaderWsStream = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
 static WRITER_WS_STREAM: OnceLock<Mutex<WriterWsStream>> = OnceLock::new(); // a thread safe one
+
+static mut FILE_TREE: OnceLock<FileTree> = OnceLock::new(); // a thread safe one
 
 /// handle the connection to the server and initialize the writer
 /// for `client_send_message` function
