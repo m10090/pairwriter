@@ -47,7 +47,7 @@ pub(super) async fn connect_to_server(raw_stream: TcpStream) -> Result<(), Strin
         queue.insert(message, client);
         return Ok(());
     }
-    let (files, emty_dirs) = FILETREE.lock().await.get_maps();
+    let (files, emty_dirs) = API.lock().await.get_maps().await;
     let rpc = RPC::ResConnect {
         username: "Server".to_string(),
         files,

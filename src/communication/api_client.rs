@@ -22,7 +22,7 @@ impl ClientApi {
         priviledge: Priviledge,
     ) -> Self {
         Self {
-            file_tree: Mutex::new(FileTree::build_tree(files, emty_dir)),
+            file_tree: Mutex::new(FileTree::build_tree(files, emty_dirs)),
             priviledge,
         }
     }

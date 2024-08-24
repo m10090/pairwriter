@@ -349,7 +349,7 @@ impl ServerFunc for FileTree {
         if self.files.binary_search(&path).is_err() {
             Err(Error::new(io::ErrorKind::NotFound, "file is or not found"))
         } else if let Some(_file) = self.tree.get(&path) {
-            File::create(&path)?.write_all(self.read_buf(path)?.as_slice())?;
+            File::create(&path)?.write_all(self.read_buf(&path)?.as_slice())?;
             Ok(())
         } else {
             Err(Error::new(

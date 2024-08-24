@@ -16,7 +16,7 @@ type ReaderWsStream = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
 static WRITER_WS_STREAM: OnceLock<Mutex<WriterWsStream>> = OnceLock::new(); // a thread safe one
 
-pub static API: OnceLock<ClientApi> = OnceLock::new(); // a thread safe one
+pub static mut API: OnceLock<ClientApi> = OnceLock::new(); // a thread safe one
 
 /// handle the connection to the server and initialize the writer
 /// for `client_send_message` function

@@ -26,7 +26,7 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
     async move {
         while let Some(message) = reader.next().await {
             let message = message.expect("Failed to get message"); // todo: handle error
-            if let Message::Binary(message) = message {
+            if let Message::Binary(ref message) = message {
                 let rpc = RPC::decode(message.as_slice()).expect("Failed to decode message");
                 if let RPC::ResConnect {
                     username: _username,
@@ -34,20 +34,29 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
                     emty_dirs,
                 } = rpc
                 {
-
-                    API.set(ClientApi::new_client(
-                        files,
-                        emty_dirs,
-                        crate::server::connection::Priviledge::ReadWrite,
-                    ))
-                    .unwrap();
+                    unsafe {
+                        API.set(ClientApi::new_client(
+                            files,
+                            emty_dirs,
+                            crate::server::connection::Priviledge::ReadWrite,
+                        ))
+                        .unwrap();
+                    }
                 }
             }
             #[cfg(feature = "integration_testing_client")]
             {
                 dbg!(&message);
                 dbg!("message reseved");
-                tokio::spawn(crate::integration_testing::reseived_message(message));
+                tokio::spawn(crate::integration_testing::reseived_message(
+                    message.clone(),
+                ));
+            }
+            unsafe {
+                match API.get_mut() {
+                    Some(api) => api.read_tx(message).await,
+                    None => println!("API not initialized"),
+                };
             }
 
             // todo!("Handle message: {:?}", message);

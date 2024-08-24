@@ -57,7 +57,12 @@ impl ApiServer {
         server_send_message(rpc.encode().unwrap()).await;
     }
 
-    pub async fn read_tx(&mut self, rpc: RPC, client:&mut Client , username: &String) -> Result<Message,()>  {
+    pub async fn read_tx(
+        &mut self,
+        rpc: RPC,
+        client: &mut Client,
+        username: &String,
+    ) -> Result<Message, ()> {
         let mut file = self.file_tree.lock().await;
         self.queue.lock().await.push_back(rpc.clone());
         file.handel_msg(rpc, client, username).await //todo
@@ -65,5 +70,8 @@ impl ApiServer {
     pub async fn read_rpc(&mut self) -> Option<RPC> {
         let mut queue = self.queue.lock().await;
         queue.pop_front()
+    }
+    pub async fn get_maps(&self) -> (Vec<String>, Vec<String>) {
+        self.file_tree.lock().await.get_maps()
     }
 }
