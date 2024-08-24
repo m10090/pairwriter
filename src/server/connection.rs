@@ -47,6 +47,16 @@ pub(super) async fn connect_to_server(raw_stream: TcpStream) -> Result<(), Strin
         queue.insert(message, client);
         return Ok(());
     }
+    let (files, emty_dirs) = FILETREE.lock().await.get_maps();
+    let rpc = RPC::ResConnect {
+        username: "Server".to_string(),
+        files,
+        emty_dirs,
+    };
+    client.send_message(rpc.encode().unwrap()).await.unwrap_or_else(|err| {
+        eprintln!("{}", err);
+    });
+
     Err("Invalid message".to_string())
 }
 pub(super) async fn remove_dead_clients() {
@@ -108,4 +118,3 @@ impl Client {
         return Ok(rpc);
     }
 }
-

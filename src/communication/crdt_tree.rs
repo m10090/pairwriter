@@ -4,6 +4,8 @@ use std::collections::HashMap;
 use std::io::Error;
 use std::path::Path;
 
+
+
 #[derive(Debug, Clone)]
 pub struct FileTree {
     pub tree: HashMap<String, Automerge>,

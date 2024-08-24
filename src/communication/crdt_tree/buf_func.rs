@@ -1,6 +1,5 @@
 use super::*;
 use automerge::{ReadDoc as _, ScalarValue, Value, ROOT};
-use std::borrow::Cow;
 use std::io;
 use std::io::Result as Res;
 impl FileTree {
@@ -23,8 +22,8 @@ impl FileTree {
     pub fn drop_buf(&mut self, path: String) {
         self.tree.remove(&path);
     }
-    pub fn read_buf(&mut self, path: String) -> Res<Vec<u8>> {
-        let file = self.tree.get(&path);
+    pub fn read_buf(&self, path: &String) -> Res<Vec<u8>> {
+        let file = self.tree.get(path);
         if file.is_none() && self.files.binary_search(&path).is_ok() {
             Err(Error::new(
                 io::ErrorKind::NotConnected,

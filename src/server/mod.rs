@@ -31,5 +31,5 @@ pub async fn is_queue_empty() -> bool {
 
 pub mod connection;
 pub mod messageing;
-mod variables;
+pub mod variables;
 use variables::*;

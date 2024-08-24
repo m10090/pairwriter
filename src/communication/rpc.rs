@@ -6,15 +6,26 @@ use tokio_tungstenite::tungstenite::Message;
 
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 pub enum RPC {
+    ResConnect{
+        username: String, // server username
+        files: Vec<String>,
+        emty_dirs: Vec<String>,
+    },
     /// buffer operations  these are all read and write operaition
-    RequestBufferTree {
+    ReqBufferTree {
         path: String,
+    },
+    /// `.` should refer to the Current Working Directory
+    /// send file to the client  
+    ResSendFile {
+        path: String,
+        file: Vec<u8>, // this could be a automerge tree
     },
     EditBuffer {
         path: String,
         changes: Vec<Vec<u8>>,
     },
-    ClientMoveCursor {
+    ReqMoveCursor {
         path: String,
         position: usize,
     },
@@ -23,11 +34,16 @@ pub enum RPC {
         path: String,
         position: usize,
     },
-    /// `.` should refer to the Current Working Directory
-    /// send file to the client  
-    ServerSendFile {
+    RequestMark {
         path: String,
-        file: Vec<u8>, // this could be a automerge tree
+        s_position: usize,
+        e_position: usize,
+    },
+    Mark {
+        path: String,
+        s_position: usize,
+        e_position: usize,
+        username: String,
     },
     // Directory system operations
     CreateDirectory {
@@ -62,17 +78,6 @@ pub enum RPC {
     Error(String),
     // this is a simple selection of a file
     // also it doesn't support multiple selection as not all editors support it
-    RequestMark {
-        path: String,
-        s_position: usize,
-        e_position: usize,
-    },
-    Mark {
-        path: String,
-        s_position: usize,
-        e_position: usize,
-        username: String,
-    },
 }
 
 impl RPC {

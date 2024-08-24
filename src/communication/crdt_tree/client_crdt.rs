@@ -27,7 +27,7 @@ trait ClientFunc {
 
     fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()>;
 }
-pub trait ClientTx: ClientFunc {
+pub trait ClientTx : ClientFunc {
     fn build_tree(files: Vec<String>, emty_dirs: Vec<String>) -> Self;
     fn handle_msg(&mut self, tx: Message);
 }
@@ -372,7 +372,7 @@ impl ClientTx for FileTree {
             }
             RPC::RequestSaveFile { path } => todo!(), // should call the api to remove the dirty
             // bit
-            RPC::ServerSendFile { path, file } => {
+            RPC::ResSendFile { path, file } => {
                 self.tree
                     .insert(path, automerge::Automerge::load(file.as_slice()).unwrap());
             }

@@ -1,10 +1,11 @@
 use crate::server::connection::{Client, Priviledge};
 use automerge::{transaction::Transactable, ReadDoc, ROOT};
+use lazy_static::lazy_static;
 use std::{
-    borrow::Cow,
     fs::{self, File},
     io::{self, Error, Result as Res, Write},
 };
+use tokio::sync::Mutex;
 
 use tokio_tungstenite::tungstenite::Message;
 
@@ -39,6 +40,8 @@ pub trait ServerTx: ServerFunc {
         client: &mut Client,
         username: &String,
     ) -> Result<Message, ()>;
+    fn get_maps(&self) -> (Vec<String>, Vec<String>);
+    fn open_file(&mut self, path: String) -> Res<()>;
 }
 
 impl ServerFunc for FileTree {
@@ -375,10 +378,9 @@ impl ServerFunc for FileTree {
     }
 
     fn get_automerge(&mut self, path: &String) -> Res<Vec<u8>> {
-        if self.files.binary_search(&path).is_err() {
+        if self.files.binary_search(path).is_err() {
             Err(Error::new(io::ErrorKind::NotFound, "file is or not found"))
-        }
-        else if let Some(file) = self.tree.get(path) {
+        } else if let Some(file) = self.tree.get(path) {
             Ok(file.save())
         } else {
             Err(Error::new(
@@ -526,7 +528,7 @@ impl ServerTx for FileTree {
                 Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
-            RPC::ClientMoveCursor { path, position } => {
+            RPC::ReqMoveCursor { path, position } => {
                 let rpc = RPC::ResMoveCursor {
                     username: username.clone(),
                     path,
@@ -535,18 +537,14 @@ impl ServerTx for FileTree {
                 Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
-            RPC::RequestBufferTree { path } => {
+            RPC::ReqBufferTree { path } => {
                 let file = self.get_automerge(&path).map_err(Self::err_msg)?;
 
-                let rpc = RPC::ServerSendFile {
-                    path, 
-                    file,
-                };
+                let rpc = RPC::ResSendFile { path, file };
                 client
                     .send_message(rpc.encode().map_err(Self::err_msg)?)
                     .await
                     .map_err(Self::err_msg)?; // await is needed as I think
-
                 Ok(Message::binary(vec![]))
             }
 
@@ -556,7 +554,14 @@ impl ServerTx for FileTree {
             }
         }
     }
+    fn get_maps(&self) -> (Vec<String>, Vec<String>) {
+        (self.files.clone(), self.emty_dirs.clone())
+    }
+    fn open_file(&mut self, path: String) -> Res<()> {
+        ServerFunc::open_file(self, path)
+    }
 }
+
 #[cfg(test)]
 mod test {
     use std::panic;

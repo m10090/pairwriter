@@ -1,3 +1,5 @@
+use crate::communication::crdt_tree::client_crdt::ClientTx;
+
 use super::*;
 use futures::Future;
 use tokio_tungstenite::tungstenite::{Error, Message};
@@ -24,7 +26,23 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
     async move {
         while let Some(message) = reader.next().await {
             let message = message.expect("Failed to get message"); // todo: handle error
+            if let Message::Binary(message) = message {
+                let rpc = RPC::decode(message.as_slice()).expect("Failed to decode message");
+                if let RPC::ResConnect {
+                    username: _username,
+                    files,
+                    emty_dirs,
+                } = rpc
+                {
 
+                    API.set(ClientApi::new_client(
+                        files,
+                        emty_dirs,
+                        crate::server::connection::Priviledge::ReadWrite,
+                    ))
+                    .unwrap();
+                }
+            }
             #[cfg(feature = "integration_testing_client")]
             {
                 dbg!(&message);

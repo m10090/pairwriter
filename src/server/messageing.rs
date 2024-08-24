@@ -36,12 +36,11 @@ async fn read_message_from_clients() -> Result<Message, String> {
     for (username, client) in queue.iter_mut() {
         futrs.push(Box::pin(async {
             let rpc = client.read_message().await?;
-            FILETREE
-                .lock()
+            API.lock()
                 .await
-                .handel_msg(rpc, client, username)
+                .read_tx(rpc, client, username)
                 .await
-                .map_err(|_| "error happend".to_string())
+                .map_err(|_| "error reading the message".to_string())
         }));
     }
     // this will return the frist message it gets
