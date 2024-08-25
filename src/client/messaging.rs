@@ -34,14 +34,12 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
                     emty_dirs,
                 } = rpc
                 {
-                    unsafe {
-                        API.set(ClientApi::new_client(
-                            files,
-                            emty_dirs,
-                            crate::server::connection::Priviledge::ReadWrite,
-                        ))
-                        .unwrap();
-                    }
+                    API.set(Mutex::new(ClientApi::new_client(
+                        files,
+                        emty_dirs,
+                        crate::server::connection::Priviledge::ReadWrite,
+                    )))
+                    .unwrap();
                 }
             }
             #[cfg(feature = "integration_testing_client")]
@@ -52,12 +50,10 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
                     message.clone(),
                 ));
             }
-            unsafe {
-                match API.get_mut() {
-                    Some(api) => api.read_tx(message).await,
-                    None => println!("API not initialized"),
-                };
-            }
+            match API.get() {
+                Some(api) => api.lock().await.read_tx(message).await,
+                None => println!("API not initialized"),
+            };
 
             // todo!("Handle message: {:?}", message);
         }
