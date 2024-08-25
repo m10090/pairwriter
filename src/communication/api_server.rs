@@ -9,12 +9,12 @@ use tokio::sync::{Mutex, RwLock};
 use tokio_tungstenite::tungstenite::Message;
 
 #[derive(Debug)]
-pub struct ApiServer {
+pub struct ServerApi {
     file_tree: Mutex<FileTree>,
     queue: Mutex<VecDeque<RPC>>,
 }
 
-impl ApiServer {
+impl ServerApi {
     pub fn new_server() -> Self {
         Self {
             file_tree: Mutex::new(FileTree::build_file_tree()),
