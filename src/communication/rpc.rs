@@ -3,8 +3,12 @@ use bincode::{
     Decode, Encode,
 };
 use tokio_tungstenite::tungstenite::Message;
+use serde::{Serialize, Deserialize};
+use serde_json;
 
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
+#[derive(Serialize, Deserialize)]
+#[serde(tag = "type", content = "value")]
 pub enum RPC {
     ResConnect{
         username: String, // server username
