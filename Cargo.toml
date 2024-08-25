@@ -1,5 +1,5 @@
 [package]
-name = "shared-programming"
+name = "pairwriter"
 version = "0.1.0"
 edition = "2021"
 
@@ -24,3 +24,5 @@ ctor = "0.1"
 integration_testing = []
 integration_testing_client = ["integration_testing"]
 integration_testing_server = ["integration_testing"]
+
+[lib]
