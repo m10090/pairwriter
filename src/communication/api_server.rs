@@ -41,7 +41,7 @@ impl ServerApi {
         Ok(buf)
     }
 
-    pub async fn apply_changes(&mut self, path: String, pos: usize, del: isize, text: &str) {
+    pub async fn edit_buf(&mut self, path: String, pos: usize, del: isize, text: &str) {
         let map = &mut self.file_tree.lock().await.tree;
         let file = map.get_mut(&path).unwrap();
         let obj_id = file.get(ROOT, "content").unwrap().unwrap().1; // to do
@@ -57,7 +57,7 @@ impl ServerApi {
         server_send_message(rpc.encode().unwrap()).await;
     }
 
-    pub async fn read_tx(
+    pub(crate) async fn read_tx( // will not be used in the fron-end
         &mut self,
         rpc: RPC,
         client: &mut Client,
@@ -67,7 +67,7 @@ impl ServerApi {
         self.queue.lock().await.push_back(rpc.clone());
         file.handel_msg(rpc, client, username).await //todo
     }
-    pub async fn read_rpc(&mut self) -> Option<RPC> {
+    pub async fn queue_pop(&mut self) -> Option<RPC> {
         let mut queue = self.queue.lock().await;
         queue.pop_front()
     }
