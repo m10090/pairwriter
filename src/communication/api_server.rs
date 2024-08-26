@@ -31,7 +31,7 @@ impl ServerApi {
                 return Err(e);
             }
             Err(e) if e.kind() == std::io::ErrorKind::NotConnected => {
-                file.open_file(path.clone());
+                file.open_file(path.clone())?;
                 file.read_buf(&path)?
             }
             e => {
@@ -71,7 +71,7 @@ impl ServerApi {
         let mut queue = self.queue.lock().await;
         queue.pop_front()
     }
-    pub async fn get_maps(&self) -> (Vec<String>, Vec<String>) {
+    pub async fn get_file_maps(&self) -> (Vec<String>, Vec<String>) {
         self.file_tree.lock().await.get_maps()
     }
     pub async fn send_rpc(&self, rpc: RPC) {
