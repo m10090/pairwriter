@@ -74,4 +74,7 @@ impl ServerApi {
     pub async fn get_maps(&self) -> (Vec<String>, Vec<String>) {
         self.file_tree.lock().await.get_maps()
     }
+    pub async fn send_rpc(&self, rpc: RPC) {
+        server_send_message(rpc.encode().unwrap()).await;
+    }
 }
