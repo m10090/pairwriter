@@ -40,7 +40,6 @@ pub trait ServerTx: ServerFunc {
         client: &mut Client,
         username: &String,
     ) -> Result<Message, ()>;
-    fn get_maps(&self) -> (Vec<String>, Vec<String>);
     fn open_file(&mut self, path: String) -> Res<()>;
 }
 
@@ -553,9 +552,6 @@ impl ServerTx for FileTree {
                 Err(())
             }
         }
-    }
-    fn get_maps(&self) -> (Vec<String>, Vec<String>) {
-        (self.files.clone(), self.emty_dirs.clone())
     }
     fn open_file(&mut self, path: String) -> Res<()> {
         ServerFunc::open_file(self, path)

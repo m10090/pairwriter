@@ -15,19 +15,15 @@ pub struct ClientApi {
 }
 
 impl ClientApi {
-    // create a new client
-    pub fn new_client(
-        files: Vec<String>,
-        emty_dirs: Vec<String>,
-        priviledge: Priviledge,
-    ) -> Self {
+    /// create a new client _`only this crate can see it`_
+    pub(crate) fn new_client(files: Vec<String>, emty_dirs: Vec<String>, priviledge: Priviledge) -> Self {
         Self {
             file_tree: Mutex::new(FileTree::build_tree(files, emty_dirs)),
             priviledge,
         }
     }
 
-    pub async fn read_file_client(&mut self, path: String) -> Res<Vec<u8>> {
+    pub async fn read_file(&mut self, path: String) -> Res<Vec<u8>> {
         let file_tree = self.file_tree.lock().await;
         let file = file_tree.read_buf(&path);
         let file = match file {
@@ -46,7 +42,7 @@ impl ClientApi {
         Ok(file)
     }
 
-    pub async fn read_tx(&mut self, msg: Message) {
+    pub(crate) async fn read_tx(&mut self, msg: Message) {
         let mut file_tree = self.file_tree.lock().await;
         file_tree.handle_msg(msg);
     }
@@ -57,7 +53,7 @@ impl ClientApi {
         }
         client_send_message(rpc.encode().unwrap()).await; // this to stop message fluding
     }
-    pub async fn apply_changes(&mut self, path: String, pos: usize, del: isize, text: &str) {
+    pub async fn edit_buf(&mut self, path: String, pos: usize, del: isize, text: &str) {
         if self.priviledge == Priviledge::ReadOnly {
             return;
         }
@@ -67,12 +63,18 @@ impl ClientApi {
         {
             let mut tx = file.transaction();
             let _ = tx.splice_text(obj_id, pos, del, text);
+
             tx.commit();
         }
         let change = file.get_last_local_change().unwrap();
         let change_in_bytes = change.raw_bytes().to_vec();
         let changes = vec![change_in_bytes];
-        let rpc = RPC::EditBuffer { path, changes};
+
+        let rpc = RPC::EditBuffer { path, changes }; // this is safe because this operation is idiempotent
         client_send_message(rpc.encode().unwrap()).await;
+    }
+    pub async fn read_file_tree(&mut self) -> (Vec<String>, Vec<String>) {
+        let file_tree = self.file_tree.lock().await;
+        file_tree.get_maps()
     }
 }

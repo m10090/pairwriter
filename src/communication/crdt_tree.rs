@@ -65,6 +65,11 @@ impl FileTree {
     fn err_msg(e: impl std::fmt::Display) {
         eprintln!("{}", e);
     }
+    /// build the tree from the files and emty_dirs
+    /// returns the files and emty_dirs
+    pub fn get_maps(&self) -> (Vec<String>, Vec<String>) {
+        (self.files.clone(), self.emty_dirs.clone())
+    }
 }
 pub mod client_crdt;
 pub mod server_crdt;
