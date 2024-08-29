@@ -76,4 +76,4 @@ pub mod server_crdt;
 pub mod buf_func;
 
 #[cfg(test)]
-pub mod tests;
+pub mod test;
