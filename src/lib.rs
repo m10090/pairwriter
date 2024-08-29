@@ -12,7 +12,8 @@ pub use server::variables::API as server_API;
 
 pub use client::API as client_API;
 
-pub use communication::{api_client::ClientApi, api_server::ServerApi};
+pub use client::api_client::ClientApi;
 
 pub use communication::rpc::RPC;
+pub use server::api_server::ServerApi;
 

@@ -1,13 +1,18 @@
-use super::crdt_tree::client_crdt::ClientTx as _;
-use super::crdt_tree::FileTree;
-use super::rpc::RPC;
-use crate::client::messaging::client_send_message;
-use crate::server::connection::Priviledge;
+use crate::{
+    client::messaging::client_send_message,
+    communication::{
+        crdt_tree::{client_crdt::ClientTx as _, FileTree},
+        rpc::RPC,
+    },
+    server::connection::Priviledge,
+};
 use automerge::{transaction::Transactable, ReadDoc, ROOT};
 use std::io;
-use std::io::Result as Res;
 use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
+
+type Res<T> = io::Result<T>;
+
 #[derive(Debug)]
 pub struct ClientApi {
     file_tree: Mutex<FileTree>,
@@ -16,7 +21,11 @@ pub struct ClientApi {
 
 impl ClientApi {
     /// create a new client _`only this crate can see it`_
-    pub(crate) fn new_client(files: Vec<String>, emty_dirs: Vec<String>, priviledge: Priviledge) -> Self {
+    pub(crate) fn new_client(
+        files: Vec<String>,
+        emty_dirs: Vec<String>,
+        priviledge: Priviledge,
+    ) -> Self {
         Self {
             file_tree: Mutex::new(FileTree::build_tree(files, emty_dirs)),
             priviledge,

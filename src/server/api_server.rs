@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
-use super::crdt_tree::FileTree;
-use super::{crdt_tree::server_crdt::ServerTx, rpc::RPC};
+use crate::communication::crdt_tree::FileTree;
+use crate::communication::{crdt_tree::server_crdt::ServerTx, rpc::RPC};
 use crate::server::connection::Client;
 use crate::server::messageing::server_send_message;
 use automerge::{transaction::Transactable as _, ReadDoc as _, ROOT};
@@ -58,10 +58,10 @@ impl ServerApi {
     }
 
     pub(crate) async fn read_tx( // will not be used in the fron-end
-        &mut self,
-        rpc: RPC,
-        client: &mut Client,
-        username: &String,
+                                 &mut self,
+                                 rpc: RPC,
+                                 client: &mut Client,
+                                 username: &String,
     ) -> Result<Message, ()> {
         let mut file = self.file_tree.lock().await;
         self.queue.lock().await.push_back(rpc.clone());

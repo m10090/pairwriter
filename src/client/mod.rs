@@ -5,9 +5,9 @@ use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
 pub mod messaging;
+pub mod api_client;
 
-use crate::communication::api_client::ClientApi;
-use crate::communication::crdt_tree::FileTree;
+use api_client::ClientApi;
 use crate::communication::rpc::RPC;
 
 type WriterWsStream = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;

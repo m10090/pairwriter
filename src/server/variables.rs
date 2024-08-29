@@ -1,4 +1,4 @@
-use crate::communication::api_server::{self, ServerApi};
+use crate::server::api_server::{self, ServerApi};
 
 use super::*;
 use std::sync::OnceLock;

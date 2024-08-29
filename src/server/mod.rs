@@ -1,5 +1,5 @@
 use crate::communication::{
-    crdt_tree::{server_crdt::ServerTx as _, FileTree},
+    crdt_tree::server_crdt::ServerTx as _,
     rpc::RPC,
 };
 use futures::{SinkExt as _, StreamExt as _};
@@ -32,4 +32,6 @@ pub async fn is_queue_empty() -> bool { // this is pub for integration tests
 pub mod connection;
 pub mod messageing;
 pub mod variables;
+pub mod api_server;
+
 use variables::*;
