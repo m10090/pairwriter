@@ -325,12 +325,6 @@ impl ServerFunc for FileTree {
     }
     /// should be ending with '/'
     fn make_dir(&mut self, path: String) -> Res<()> {
-        if !Self::valid_dir_path(&path) {
-            return Err(Error::new(
-                io::ErrorKind::InvalidInput,
-                "The path should start with './' and end with '/'",
-            ));
-        }
         if self.in_dir(&path) {
             return Err(Error::new(
                 io::ErrorKind::AlreadyExists,

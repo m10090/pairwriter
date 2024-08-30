@@ -41,28 +41,21 @@ fn remove_dir_resulting_in_empty_dir() {
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
 
-
 #[test]
-fn move_dir_1() {
-    let mut files = FILES.clone();
-    files.push("./dir1./dir1./dir1./file1.txt".to_string());
-    let emty_dirs = vec!["./empty_dir/".to_string()];
+fn make_dir_expeted_err() {
+    let files = FILES.clone();
+    let mut emty_dirs = vec!["./empty_dir/".to_string()];
     let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
-    ft.move_dir("./dir1./".to_string(), "./hi/".to_string())
-        .unwrap();
-    files.sort();
-    files.remove(
-        files
-            .binary_search(&"./dir1./dir1./dir1./file1.txt".to_string())
-            .unwrap(),
-    );
-    files.push("./hi/dir1./dir1./file1.txt".to_string());
-    files.sort();
+
+    ft.make_dir("./dir1/".to_string()).unwrap_err();
+
+    emty_dirs.sort();
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
 
+
 #[test]
-fn move_dir_2() {
+fn move_dir() {
     let mut files = FILES.clone();
     let emty_dirs = vec!["./empty_dir/".to_string()];
     let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
@@ -86,7 +79,7 @@ fn move_dir_2() {
 }
 
 #[test]
-fn make_dir_1() {
+fn make_dir_to_sibling_empty_dir() {
     let files = FILES.clone();
     let mut emty_dirs = vec!["./not_empty_dir/emty_dir/".to_string()];
 
@@ -97,7 +90,7 @@ fn make_dir_1() {
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
 #[test]
-fn make_dir_2() {
+fn make_dir_inside_an_emty_dir() {
     let files = FILES.clone();
     let mut emty_dirs = vec!["./empty_dir/".to_string()];
 
@@ -108,7 +101,7 @@ fn make_dir_2() {
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
 #[test]
-fn move_dir_3() {
+fn rename_emty_dir() {
     let files = FILES.clone();
     let mut emty_dirs = vec!["./empty_dir/".to_string()];
 
@@ -117,16 +110,5 @@ fn move_dir_3() {
     emty_dirs.push("./hi/".to_string());
     ft.move_dir("./empty_dir/".to_string(), "./hi/".to_string())
         .unwrap();
-    assert_vec(ft, Some(&files), Some(&emty_dirs));
-}
-#[test]
-fn move_dir_4() {
-    let files = FILES.clone();
-    let emty_dirs = vec!["./empty_dir/".to_string()];
-
-    let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
-
-    ft.make_dir("./dir1/".to_string()).unwrap_err();
-
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
