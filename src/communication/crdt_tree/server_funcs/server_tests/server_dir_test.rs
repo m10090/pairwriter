@@ -3,7 +3,7 @@ use super::{FileTree, ServerFunc};
 
 // to do explane the tests
 #[test]
-fn remove_dir_1() {
+fn remove_dir() {
     let mut files = FILES.clone();
     let mut ft = FileTree::new(files.clone(), vec![]);
 
@@ -14,50 +14,9 @@ fn remove_dir_1() {
     assert_vec(ft, Some(&files), None);
 }
 
-#[test]
-fn remove_dir_2() {
-    let mut files = FILES.clone();
-    let mut ft = FileTree::new(files.clone(), vec![]);
-
-    ft.rm_dir("./dir1/".to_string()).unwrap();
-
-    files.retain(|x| !x.starts_with("./dir1/"));
-
-    assert_vec(ft, Some(&files), None);
-}
 
 #[test]
-fn remove_dir_3() {
-    let mut files = FILES.clone();
-    let mut ft = FileTree::new(files.clone(), vec![]);
-
-    ft.rm_dir("./dir0/".to_string()).unwrap();
-    files.retain(|x| !x.starts_with("./dir0/"));
-
-    assert_vec(ft, Some(&files), None);
-}
-
-#[test]
-fn remove_dir_4() {
-    let mut files = FILES.clone();
-    let mut ft = FileTree::new(files.clone(), vec![]);
-    ft.rm_dir("./dir0/dir1/".to_string()).unwrap();
-    files.retain(|x| !x.starts_with("./dir0/dir1/"));
-    assert_vec(ft, Some(&files), None);
-}
-
-#[test]
-fn remove_dir_5() {
-    let mut files = FILES.clone();
-    let mut ft = FileTree::new(files.clone(), vec![]);
-    ft.rm_dir("./dir3/".to_string()).unwrap();
-
-    files.retain(|x| !x.starts_with("./dir3/"));
-    assert_vec(ft, Some(&files), None)
-}
-
-#[test]
-fn remove_dir_6() {
+fn remove_emty_dir() {
     let files = FILES.clone();
     let mut emty_dirs = vec!["./empty_dir/".to_string()];
     let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
@@ -67,7 +26,34 @@ fn remove_dir_6() {
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
 
-// todo: add remove_dir error expected_err
+#[test]
+fn remove_dir_resulting_in_empty_dir() {
+    let mut files = FILES.clone();
+    let mut ft = FileTree::new(files.clone(), vec![]);
+
+    ft.rm_dir("./dir_with_one_dir/dir_with_one_file/".to_string()).unwrap();
+
+    let emty_dirs = vec!["./dir_with_one_dir/".to_string()];
+
+    files.retain(|x| !x.starts_with("./dir_with_one_dir/dir_with_one_file/"));
+    files.sort();
+
+    assert_vec(ft, Some(&files), Some(&emty_dirs));
+}
+
+#[test]
+fn add_dir() {
+    let files = FILES.clone();
+    let mut emty_dirs = vec!["./empty_dir/".to_string()];
+    let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
+
+    ft.make_dir("./dir1/".to_string()).unwrap();
+
+    emty_dirs.push("./dir1/".to_string());
+    emty_dirs.sort();
+
+    assert_vec(ft, Some(&files), Some(&emty_dirs));
+}
 
 #[test]
 fn move_dir_1() {

@@ -1,24 +1,25 @@
-
 use std::collections::HashMap;
 
-use super::{server_crdt::ServerFunc, FileTree};
+use super::*;
 use ctor::ctor;
-
+use serial_test::serial;
+use std::panic;
 
 #[ctor]
 /** [
-        "./file.txt",
-        "./dir0/dir1/file1.txt",
-        "./dir0/dir1/file2.txt",
-        "./dir0/dir1/subdir/file3.txt",
-        "./dir0/file1.txt",
-        "./dir1/file1.txt",
-        "./dir1/file2.txt",
-        "./dir1/subdir/file3.txt",
-        "./dir2/file4.txt",
-        "./dir3/file1.txt",
-        "./dir_with_one_file/file.txt"
-    ] */
+    "./file.txt",
+    "./dir0/dir1/file1.txt",
+    "./dir0/dir1/file2.txt",
+    "./dir0/dir1/subdir/file3.txt",
+    "./dir0/file1.txt",
+    "./dir1/file1.txt",
+    "./dir1/file2.txt",
+    "./dir1/subdir/file3.txt",
+    "./dir2/file4.txt",
+    "./dir3/file1.txt",
+    "./dir_with_one_file/file.txt"
+    "./dir_with_one_dir/dir_with_one_file/file.txt",
+] */
 static FILES: Vec<String> = {
     let mut files = [
         "./file.txt",
@@ -31,7 +32,8 @@ static FILES: Vec<String> = {
         "./dir1/subdir/file3.txt",
         "./dir2/file4.txt",
         "./dir3/file1.txt",
-        "./dir_with_one_file/file.txt"
+        "./dir_with_one_file/file.txt",
+        "./dir_with_one_dir/dir_with_one_file/file.txt",
     ]
     .iter()
     .map(|x| x.to_string())
@@ -78,6 +80,26 @@ impl FileTree {
     }
 }
 
-mod server_dir_test; 
-mod server_files_test;
+#[test]
+#[serial]
+fn right_naming() {
+    fs::create_dir("./emty_dir/").unwrap();
+    let res = panic::catch_unwind(|| {
+        let res = FileTree::build_file_tree();
+        for i in res.emty_dirs.iter() {
+            assert!(FileTree::valid_dir_path(i));
+        }
+        dbg!(&res.emty_dirs);
+        res.emty_dirs
+            .binary_search(&"./emty_dir/".to_string())
+            .unwrap();
+        for i in res.files.iter() {
+            assert!(File::open(i).is_ok());
+        }
+    });
+    fs::remove_dir("./emty_dir/").unwrap();
+    res.unwrap();
+}
 
+mod server_dir_test;
+mod server_files_test;

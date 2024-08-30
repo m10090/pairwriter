@@ -4,10 +4,12 @@ use std::{
     panic,
 };
 
+use serial_test::serial;
+
 use super::{assert_vec, FileTree, ServerFunc, FILES};
 // TODO: explain the tests
 #[test]
-fn create_file_1() {
+fn create_file_change_in_emty_dir() {
     let mut files = FILES.clone();
     let mut emty_dirs = vec!["./empty_dir/".to_string()];
     let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
@@ -23,22 +25,14 @@ fn create_file_1() {
 }
 
 #[test]
-fn create_file_2() {
-    let files = FILES.clone();
-    let emty_dirs = vec!["./empty_dir/".to_string()];
-    let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
-
-    ft.create_file("./empty_dir/file1.txt".to_string()).unwrap();
-}
-#[test]
-fn create_file_3() {
+fn create_file_without_a_dir() {
     let files = vec![];
     let emty_dirs = vec![];
     let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
     ft.create_file("./dir/file1.txt".to_string()).unwrap_err();
 }
 #[test]
-fn create_file_4() {
+fn create_file_in_the_main_dir() {
     let mut files = vec![];
     let emty_dirs = vec![];
     let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
@@ -50,7 +44,7 @@ fn create_file_4() {
 }
 
 #[test]
-fn create_file_5() {
+fn create_file_without_a_dir_2() {
     let files = FILES.clone();
     let emty_dirs = vec!["./empty_dir/".to_string()];
     let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
@@ -60,7 +54,7 @@ fn create_file_5() {
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
 #[test]
-fn create_file_6() {
+fn create_file_without_dir_in_emty_dir() {
     let mut files = FILES.clone();
     let emty_dirs = vec!["./empty_dir/".to_string()];
     let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
@@ -73,7 +67,7 @@ fn create_file_6() {
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
 #[test]
-fn create_file_7() {
+fn create_file_without_a_dir_nested_case() {
     let files = FILES.clone();
     let emty_dirs = vec!["./empty_dir/".to_string()];
     let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
@@ -85,7 +79,8 @@ fn create_file_7() {
 }
 
 #[test]
-fn open_file_1() {
+#[serial]
+fn open_file() {
     let files = FILES.clone();
     let emty_dirs = vec!["./empty_dir/".to_string()];
 
@@ -93,7 +88,7 @@ fn open_file_1() {
 
     ft.write_all("hello world".as_bytes()).unwrap();
 
-    let _ = panic::catch_unwind(move || {
+    let res = panic::catch_unwind(move || {
         let mut fs = FileTree::new(files.clone(), emty_dirs.clone());
         fs.open_file("./file1.txt".to_string()).unwrap();
 
@@ -108,6 +103,7 @@ fn open_file_1() {
         assert_vec(fs.clone(), Some(&files), Some(&emty_dirs));
     });
     fs::remove_file("./file1.txt").unwrap();
+    res.unwrap();
 }
 #[test]
 fn move_file_1() {
@@ -129,7 +125,7 @@ fn move_file_1() {
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
 #[test]
-fn move_file_2() {
+fn move_file_to_emty_dir() {
     let mut files = FILES.clone();
     let mut emty_dirs = vec!["./empty_dir/".to_string()];
 
@@ -150,7 +146,7 @@ fn move_file_2() {
 }
 
 #[test]
-fn move_file_3() {
+fn move_file_2() {
     let mut files = FILES.clone();
     let mut emty_dirs = vec![];
 
@@ -169,8 +165,26 @@ fn move_file_3() {
     files.sort();
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
+
 #[test]
-fn remove_file_1() {
+fn move_file_failer() {
+    let files = FILES.clone();
+    let emty_dirs = vec!["./empty_dir/".to_string()];
+
+    let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
+
+    ft.move_file(
+        "./dir0/file1.txt".to_string(),
+        "./dir1/file1.txt".to_string(),
+    )
+    .unwrap_err();
+
+    assert_vec(ft, Some(&files), Some(&emty_dirs));
+
+}
+
+#[test]
+fn remove_file() {
     let mut files = FILES.clone();
     let emty_dirs = vec!["./empty_dir/".to_string()];
 

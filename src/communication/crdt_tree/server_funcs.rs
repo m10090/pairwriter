@@ -1,20 +1,22 @@
 use crate::server::connection::{Client, Priviledge};
-use automerge::{transaction::Transactable, ReadDoc, ROOT};
-use lazy_static::lazy_static;
+use automerge::{transaction::Transactable, ROOT};
 use std::{
     fs::{self, File},
-    io::{self, Error, Result as Res, Write},
+    io::{self, Error, Write},
 };
-use tokio::sync::Mutex;
+
+type Res<T> = io::Result<T>;
 
 use tokio_tungstenite::tungstenite::Message;
 
 use super::*;
 use crate::communication::rpc::RPC;
 
-use macros::conditional_pub;
 
-#[conditional_pub(test)]
+
+#[cfg(test)]
+mod server_tests;
+
 trait ServerFunc {
     /// add file to the tree
     fn open_file(&mut self, path: String) -> Res<()>;
@@ -134,6 +136,8 @@ impl ServerFunc for FileTree {
         files.remove(old_index);
         match files.binary_search(&new_path) {
             Ok(_) => {
+                // clean up the mess (this is also an expensive clean up)
+                files.insert(old_index, old_path);
                 return Err(Error::new(
                     io::ErrorKind::AlreadyExists,
                     "file path already exists",
@@ -273,6 +277,7 @@ impl ServerFunc for FileTree {
             ));
         }
         let (files, emty_dirs) = (&mut self.files, &mut self.emty_dirs);
+        let parent_dir = Self::parent_dir(&path);
 
         if let Ok(i) = emty_dirs.binary_search(&path) {
             // EMTY_DIRS_OP
@@ -298,6 +303,7 @@ impl ServerFunc for FileTree {
         }
         let end = r;
 
+
         #[cfg(not(test))]
         fs::remove_dir_all(&path)?;
 
@@ -305,6 +311,16 @@ impl ServerFunc for FileTree {
             self.tree.remove(&s);
             drop(s);
         });
+
+        if !self.in_dir(&parent_dir) {
+            match self.emty_dirs.binary_search(&parent_dir) {
+                Ok(_) => unreachable!(),
+                Err(i) => {
+                    self.emty_dirs.insert(i, parent_dir);
+                }
+            }
+        }
+
         Ok(())
     }
     /// should be ending with '/'
@@ -558,28 +574,3 @@ impl ServerTx for FileTree {
     }
 }
 
-#[cfg(test)]
-mod test {
-    use std::panic;
-
-    use super::*;
-    #[test]
-    fn right_naming() {
-        fs::create_dir("./emty_dir/").unwrap();
-        let res = panic::catch_unwind(|| {
-            let res = FileTree::build_file_tree();
-            for i in res.emty_dirs.iter() {
-                assert!(FileTree::valid_dir_path(i));
-            }
-            dbg!(&res.emty_dirs);
-            res.emty_dirs
-                .binary_search(&"./emty_dir/".to_string())
-                .unwrap();
-            for i in res.files.iter() {
-                assert!(File::open(i).is_ok());
-            }
-        });
-        fs::remove_dir("./emty_dir").unwrap();
-        res.unwrap();
-    }
-}

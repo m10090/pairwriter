@@ -71,9 +71,7 @@ impl FileTree {
         (self.files.clone(), self.emty_dirs.clone())
     }
 }
-pub mod client_crdt;
-pub mod server_crdt;
+pub mod client_funcs;
+pub mod server_funcs;
 pub mod buf_func;
 
-#[cfg(test)]
-pub mod test;

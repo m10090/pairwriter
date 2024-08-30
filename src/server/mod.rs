@@ -1,5 +1,5 @@
 use crate::communication::{
-    crdt_tree::server_crdt::ServerTx as _,
+    crdt_tree::server_funcs::ServerTx as _,
     rpc::RPC,
 };
 use futures::{SinkExt as _, StreamExt as _};

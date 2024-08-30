@@ -1,7 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::communication::crdt_tree::FileTree;
-use crate::communication::{crdt_tree::server_crdt::ServerTx, rpc::RPC};
+use crate::communication::{crdt_tree::server_funcs::ServerTx, rpc::RPC};
 use crate::server::connection::Client;
 use crate::server::messageing::server_send_message;
 use automerge::{transaction::Transactable as _, ReadDoc as _, ROOT};

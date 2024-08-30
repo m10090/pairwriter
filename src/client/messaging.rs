@@ -1,4 +1,3 @@
-use crate::communication::crdt_tree::client_crdt::ClientTx;
 
 use super::*;
 use futures::Future;
