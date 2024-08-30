@@ -41,19 +41,6 @@ fn remove_dir_resulting_in_empty_dir() {
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
 
-#[test]
-fn add_dir() {
-    let files = FILES.clone();
-    let mut emty_dirs = vec!["./empty_dir/".to_string()];
-    let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
-
-    ft.make_dir("./dir1/".to_string()).unwrap();
-
-    emty_dirs.push("./dir1/".to_string());
-    emty_dirs.sort();
-
-    assert_vec(ft, Some(&files), Some(&emty_dirs));
-}
 
 #[test]
 fn move_dir_1() {

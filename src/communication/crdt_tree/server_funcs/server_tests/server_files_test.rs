@@ -84,25 +84,25 @@ fn open_file() {
     let files = FILES.clone();
     let emty_dirs = vec!["./empty_dir/".to_string()];
 
-    let mut ft = File::create("./file1.txt").unwrap();
+    let mut ft = File::create("./file.txt").unwrap();
 
     ft.write_all("hello world".as_bytes()).unwrap();
 
     let res = panic::catch_unwind(move || {
         let mut fs = FileTree::new(files.clone(), emty_dirs.clone());
-        fs.open_file("./file1.txt".to_string()).unwrap();
+        fs.open_file("./file.txt".to_string()).unwrap();
 
         assert_vec(fs.clone(), Some(&files), Some(&emty_dirs));
 
         use automerge::*;
 
-        let auto = fs.tree.get("./file1.txt").unwrap();
+        let auto = fs.tree.get("./file.txt").unwrap();
         let (v, exid) = auto.get(ROOT, "content").unwrap().unwrap();
         assert!(auto.text(exid).unwrap() == "hello world", "auto: {:?}", v);
 
         assert_vec(fs.clone(), Some(&files), Some(&emty_dirs));
     });
-    fs::remove_file("./file1.txt").unwrap();
+    fs::remove_file("./file.txt").unwrap();
     res.unwrap();
 }
 #[test]
