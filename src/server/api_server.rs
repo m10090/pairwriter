@@ -15,7 +15,7 @@ pub struct ServerApi {
 }
 
 impl ServerApi {
-    pub fn new_server() -> Self {
+    pub(crate) fn new_server() -> Self {
         Self {
             file_tree: Mutex::new(FileTree::build_file_tree()),
             queue: Mutex::new(VecDeque::new()),
@@ -57,11 +57,12 @@ impl ServerApi {
         server_send_message(rpc.encode().unwrap()).await;
     }
 
-    pub(crate) async fn read_tx( // will not be used in the fron-end
-                                 &mut self,
-                                 rpc: RPC,
-                                 client: &mut Client,
-                                 username: &String,
+    pub async fn read_tx(
+        // will not be used in the fron-end
+        &mut self,
+        rpc: RPC,
+        client: &mut Client,
+        username: &String,
     ) -> Result<Message, ()> {
         let mut file = self.file_tree.lock().await;
         self.queue.lock().await.push_back(rpc.clone());

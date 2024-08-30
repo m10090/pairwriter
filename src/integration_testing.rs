@@ -17,7 +17,7 @@ lazy_static! {
 lazy_static! {
     static ref WATING: Mutex<bool> = Mutex::new(true);
 }
-pub async fn reseived_message(msg: Message) {
+pub(crate) async fn reseived_message(msg: Message) {
     let mut wating = WATING.lock().await;
     if !*wating {
         panic!("message sent out of order")
@@ -31,7 +31,7 @@ pub async fn reseived_message(msg: Message) {
     );
     *wating = false;
 }
-pub async fn await_message(msg: Message) {
+pub(crate) async fn await_message(msg: Message) {
     loop {
         let wating = WATING.lock().await;
         if !*wating {

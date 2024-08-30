@@ -1,5 +1,5 @@
 
-pub async fn run_test() {
+pub(crate) async fn run_test() {
     sleep(Duration::from_secs(6)).await;
     println!("test_is_running");
 

@@ -1,7 +1,4 @@
-use crate::communication::{
-    crdt_tree::server_funcs::ServerTx as _,
-    rpc::RPC,
-};
+use crate::communication::{crdt_tree::server_funcs::ServerTx as _, rpc::RPC};
 use futures::{SinkExt as _, StreamExt as _};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
@@ -11,8 +8,9 @@ use tokio::{
 };
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 
+use variables::*;
 
-pub async fn start_server(port: u16) {
+pub(crate) async fn start_server(port: u16) {
     // main point
     let url = format!("127.0.0.1:{}", port);
     let listener = TcpListener::bind(&url).await.unwrap(); // panic is needed
@@ -24,14 +22,12 @@ pub async fn start_server(port: u16) {
     }
 }
 
-pub async fn is_queue_empty() -> bool { // this is pub for integration tests
+pub(crate) async fn is_queue_empty() -> bool {
+    // this is pub for integration tests
     QUEUE.lock().await.is_empty()
 }
 
-
-pub mod connection;
-pub mod messageing;
-pub mod variables;
-pub mod api_server;
-
-use variables::*;
+pub(crate) mod api_server;
+pub(crate) mod connection;
+pub(crate) mod messageing;
+pub(crate) mod variables;

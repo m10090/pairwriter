@@ -4,11 +4,11 @@ use std::sync::OnceLock;
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_tungstenite::{connect_async, tungstenite::Message, MaybeTlsStream, WebSocketStream};
-pub mod messaging;
-pub mod api_client;
+pub(crate) mod api_client;
+pub(crate) mod messaging;
 
-use api_client::ClientApi;
 use crate::communication::rpc::RPC;
+use api_client::ClientApi;
 
 type WriterWsStream = SplitSink<WebSocketStream<MaybeTlsStream<TcpStream>>, Message>;
 
@@ -16,7 +16,7 @@ type ReaderWsStream = SplitStream<WebSocketStream<MaybeTlsStream<TcpStream>>>;
 
 static WRITER_WS_STREAM: OnceLock<Mutex<WriterWsStream>> = OnceLock::new(); // a thread safe one
 
-pub static API: OnceLock<Mutex<ClientApi>> = OnceLock::new(); // a thread safe one
+pub static API: OnceLock<Mutex<ClientApi>> = OnceLock::new();
 
 /// handle the connection to the server and initialize the writer
 /// for `client_send_message` function
@@ -41,5 +41,5 @@ pub async fn connect_as_client(url: String, username: String) {
     tokio::spawn(messaging::get_on_message(reader));
     tokio::signal::ctrl_c()
         .await
-        .expect("Failed to listen for ctrl-c");
+        .expect("Failed to listen for ctrl-c"); 
 }

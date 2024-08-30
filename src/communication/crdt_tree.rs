@@ -4,11 +4,9 @@ use std::collections::HashMap;
 use std::io::Error;
 use std::path::Path;
 
-
-
 #[derive(Debug, Clone)]
-pub struct FileTree {
-    pub tree: HashMap<String, Automerge>,
+pub(crate) struct FileTree {
+    pub(crate) tree: HashMap<String, Automerge>,
     files: Vec<String>, // this is not efficient but I don't care
     emty_dirs: Vec<String>, // take care when working with emty_dirs
                         // Every operation on emty_dirs will be commented with EMTY_DIRS_OP
@@ -67,11 +65,10 @@ impl FileTree {
     }
     /// build the tree from the files and emty_dirs
     /// returns the files and emty_dirs
-    pub fn get_maps(&self) -> (Vec<String>, Vec<String>) {
+    pub(crate) fn get_maps(&self) -> (Vec<String>, Vec<String>) {
         (self.files.clone(), self.emty_dirs.clone())
     }
 }
-pub mod client_funcs;
-pub mod server_funcs;
-pub mod buf_func;
-
+pub(crate) mod buf_func;
+pub(crate) mod client_funcs;
+pub(crate) mod server_funcs;

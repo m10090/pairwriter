@@ -57,7 +57,7 @@ pub(super) async fn connect_to_server(raw_stream: TcpStream) -> Result<(), Strin
 
     Err("Invalid message".to_string())
 }
-pub(super) async fn remove_dead_clients() {
+pub(crate) async fn remove_dead_clients() {
     let mut queue = QUEUE.lock().await;
     queue.retain(|username, client| {
         if !client.open {
@@ -68,22 +68,22 @@ pub(super) async fn remove_dead_clients() {
     });
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq)]// TODO: add privileges to the api
 pub enum Priviledge {
     ReadOnly, // TODO: improve this priviledge
     ReadWrite,
 }
 
 #[derive(Debug)]
-pub struct Client {
-    pub priviledge: Priviledge,
+pub(crate) struct Client {
+    pub(crate) priviledge: Priviledge,
     ws_stream: WebSocketStream<TcpStream>,
     open: bool,
 }
 
 impl Client {
     /// close the connection with the client
-    pub async fn send_message(&mut self, message: Message) -> Result<(), String> {
+    pub(crate) async fn send_message(&mut self, message: Message) -> Result<(), String> {
         let ws_stream = &mut self.ws_stream;
         let error = Err(format!(
             "Failed to send message\n to client with ip address: {:?}",
@@ -95,7 +95,7 @@ impl Client {
             _ => error,
         }
     }
-    pub async fn read_message(&mut self) -> Result<RPC, String> {
+    pub(crate) async fn read_message(&mut self) -> Result<RPC, String> {
         let ws_stream = &mut self.ws_stream;
         let error = Err(format!(
             "Failed to read message\n from client with ip address: {:?}",

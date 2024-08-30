@@ -59,7 +59,7 @@ async fn read_message_from_clients() -> Result<Message, String> {
     res
 }
 
-pub async fn handle_messages() -> ! {
+pub(crate) async fn handle_messages() -> ! {
     let (tx, mut rx) = mpsc::unbounded_channel();
     TX.set(tx).unwrap();
     loop {
@@ -80,6 +80,6 @@ pub async fn handle_messages() -> ! {
     }
 }
 
-pub async fn server_send_message(msg: Message) {
+pub(crate) async fn server_send_message(msg: Message) {
     TX.get().unwrap().send(msg).unwrap(); // todo: remove this panic
 }

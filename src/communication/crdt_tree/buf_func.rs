@@ -3,7 +3,7 @@ use automerge::{ReadDoc as _, ScalarValue, Value, ROOT};
 use std::io;
 use std::io::Result as Res;
 impl FileTree {
-    pub fn add_buf(&mut self, path: String, buf: &[u8]) -> Res<()> {
+    pub(super) fn add_buf(&mut self, path: String, buf: &[u8]) -> Res<()> {
         if self.files.binary_search(&path).is_ok() {
             let buf = automerge::Automerge::load(buf).map_err(|_| {
                 Error::new(
@@ -19,12 +19,12 @@ impl FileTree {
             "The file does not exist",
         ))
     }
-    pub fn drop_buf(&mut self, path: String) {
+    pub(super) fn drop_buf(&mut self, path: String) {
         self.tree.remove(&path);
     }
-    pub fn read_buf(&self, path: &String) -> Res<Vec<u8>> {
+    pub(crate) fn read_buf(&self, path: &String) -> Res<Vec<u8>> {
         let file = self.tree.get(path);
-        if file.is_none() && self.files.binary_search(&path).is_ok() {
+        if file.is_none() && self.files.binary_search(path).is_ok() {
             Err(Error::new(
                 io::ErrorKind::NotConnected,
                 "file not found in the file",
@@ -49,6 +49,5 @@ impl FileTree {
                 )),
             }
         }
-
     }
 }
