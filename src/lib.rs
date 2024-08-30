@@ -10,4 +10,6 @@ pub mod prelude {
     pub use super::client::api_client::ClientApi;
     pub use super::communication::rpc::RPC;
     pub use super::server::api_server::ServerApi;
+    pub use super::server::start_server;
+    pub use super::client::connect_as_client;
 }

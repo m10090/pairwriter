@@ -3,4 +3,6 @@
 - [ ] write better integration test
 - [ ] refactor integration test
 - [ ] write client test
-
+- [ ] add error enum
+- [ ] take in care client duplecated username
+- [ ] alow client to change (his/her) privilege

@@ -1,16 +1,15 @@
-use crate::communication::{crdt_tree::server_funcs::ServerTx as _, rpc::RPC};
 use futures::{SinkExt as _, StreamExt as _};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use tokio::{
-    net::{TcpListener, TcpStream},
+    net::TcpListener,
     sync::{mpsc, Mutex},
 };
 use tokio_tungstenite::{tungstenite::Message, WebSocketStream};
 
 use variables::*;
 
-pub(crate) async fn start_server(port: u16) {
+pub async fn start_server(port: u16) {
     // main point
     let url = format!("127.0.0.1:{}", port);
     let listener = TcpListener::bind(&url).await.unwrap(); // panic is needed

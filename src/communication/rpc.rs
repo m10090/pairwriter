@@ -5,15 +5,23 @@ use bincode::{
 use tokio_tungstenite::tungstenite::Message;
 use serde::{Serialize, Deserialize};
 
+use crate::server::connection::Priviledge;
+
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 #[derive(Serialize, Deserialize)]
 pub enum RPC {
+    /// Response to a connection request
     ResConnect{
         username: String, // server username
         files: Vec<String>,
         emty_dirs: Vec<String>,
+        priviledge: Priviledge,
     },
-    /// buffer operations  these are all read and write operaition
+    /// inform the client that the priviledge that (his/her) privilege has been changed
+    ChangePriviledge{
+        priviledge: Priviledge,
+    },
+    /// buffer operations these are all read and write operaition
     ReqBufferTree {
         path: String,
     },
@@ -75,8 +83,8 @@ pub enum RPC {
     ServerFileSaved{
         path: String,
     },
+
     AddUsername(String),
-    
     Error(String),
     // this is a simple selection of a file
     // also it doesn't support multiple selection as not all editors support it

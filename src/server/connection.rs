@@ -1,4 +1,5 @@
 use crate::communication::rpc::RPC;
+use bincode::Decode;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 
@@ -50,10 +51,14 @@ pub(super) async fn connect_to_server(raw_stream: TcpStream) -> Result<(), Strin
         username: "Server".to_string(),
         files,
         emty_dirs,
+        priviledge: Priviledge::ReadWrite,
     };
-    client.send_message(rpc.encode().unwrap()).await.unwrap_or_else(|err| {
-        eprintln!("{}", err);
-    });
+    client
+        .send_message(rpc.encode().unwrap())
+        .await
+        .unwrap_or_else(|err| {
+            eprintln!("{}", err);
+        });
 
     Err("Invalid message".to_string())
 }
@@ -68,7 +73,9 @@ pub(crate) async fn remove_dead_clients() {
     });
 }
 
-#[derive(Debug, PartialEq)]// TODO: add privileges to the api
+#[derive(
+    Debug, PartialEq, Clone, Copy, bincode::Encode, Decode, serde::Serialize, serde::Deserialize,
+)] // TODO: add privileges to the api
 pub enum Priviledge {
     ReadOnly, // TODO: improve this priviledge
     ReadWrite,
@@ -114,5 +121,11 @@ impl Client {
         };
         let rpc = RPC::decode(in_message.as_slice()).map_err(|e| e.to_string())?;
         return Ok(rpc);
+    }
+    pub(crate) async fn close(mut self) -> Result<(), String>{
+        self.ws_stream.close(None).await.map_err(|err| {
+            eprintln!("{}", err);
+            format!("{}",err).to_string()
+        })
     }
 }

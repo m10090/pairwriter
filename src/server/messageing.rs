@@ -21,7 +21,7 @@ async fn broadcast_message(msg: Message) -> Result<(), String> {
     }
     Ok(())
 }
-async fn read_message_from_clients() -> Result<Message, String> {
+async fn handle_message() -> Result<Message, String> {
     let mut queue = QUEUE.lock().await;
     let mut futrs = Vec::with_capacity(queue.len());
     if queue.is_empty() {
@@ -67,7 +67,7 @@ pub(crate) async fn handle_messages() -> ! {
             println!("waiting for message");
             connection::remove_dead_clients().await;
             let message = tokio::select! {
-                client_message = read_message_from_clients() => client_message?,
+                client_message = handle_message() => client_message?,
                 Some(server_message) = rx.recv() => server_message ,
             };
             broadcast_message(message).await?;

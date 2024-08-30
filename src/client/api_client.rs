@@ -32,7 +32,7 @@ impl ClientApi {
         }
     }
 
-    pub(crate) async fn read_file(&mut self, path: String) -> Res<Vec<u8>> {
+    pub async fn read_file(&mut self, path: String) -> Res<Vec<u8>> {
         let file_tree = self.file_tree.lock().await;
         let file = file_tree.read_buf(&path);
         let file = match file {
@@ -51,18 +51,19 @@ impl ClientApi {
         Ok(file)
     }
 
-    pub(crate) async fn read_tx(&mut self, msg: Message) {
+    pub async fn read_tx(&mut self, msg: Message) {
         let mut file_tree = self.file_tree.lock().await;
         file_tree.handle_msg(msg);
+        
     }
 
-    pub(crate) async fn send_rpc(&mut self, rpc: RPC) {
+    pub async fn send_rpc(&mut self, rpc: RPC) {
         if self.priviledge == Priviledge::ReadOnly {
             todo!()
         }
         client_send_message(rpc.encode().unwrap()).await; // this to stop message fluding
     }
-    pub(crate) async fn edit_buf(&mut self, path: String, pos: usize, del: isize, text: &str) {
+    pub async fn edit_buf(&mut self, path: String, pos: usize, del: isize, text: &str) {
         if self.priviledge == Priviledge::ReadOnly {
             return;
         }
@@ -82,7 +83,7 @@ impl ClientApi {
         let rpc = RPC::EditBuffer { path, changes }; // this is safe because this operation is idiempotent
         client_send_message(rpc.encode().unwrap()).await;
     }
-    pub(crate) async fn get_file_maps(&mut self) -> (Vec<String>, Vec<String>) {
+    pub async fn get_file_maps(&mut self) -> (Vec<String>, Vec<String>) {
         self.file_tree.lock().await.get_maps()
     }
 }

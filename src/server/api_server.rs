@@ -8,6 +8,9 @@ use automerge::{transaction::Transactable as _, ReadDoc as _, ROOT};
 use tokio::sync::{Mutex, RwLock};
 use tokio_tungstenite::tungstenite::Message;
 
+use super::connection::Priviledge;
+use super::variables::QUEUE;
+
 #[derive(Debug)]
 pub struct ServerApi {
     file_tree: Mutex<FileTree>,
@@ -75,6 +78,34 @@ impl ServerApi {
     pub async fn get_file_maps(&self) -> (Vec<String>, Vec<String>) {
         self.file_tree.lock().await.get_maps()
     }
+
+    pub async fn close_connection(&self, username: &String) -> Result<(), String> {
+        let mut queue = QUEUE.lock().await;
+        match queue.remove(username) {
+            Some(c) => {
+                c.close();
+                Ok(())
+            }
+            None => Err("Client not found".to_string()),
+        }
+    }
+
+    pub async fn change_priviledge(
+        &self,
+        username: &String,
+        priviledge: Priviledge,
+    ) -> Result<(), String> {
+        let mut queue = QUEUE.lock().await;
+        if let Some(user) = queue.get_mut(username) {
+            user.priviledge = priviledge;
+            let rpc = RPC::ChangePriviledge { priviledge };
+            user.send_message(rpc.encode().unwrap()).await?;
+            Ok(())
+        } else {
+            Err("Client not found".to_string())
+        }
+    }
+
     pub async fn send_rpc(&self, rpc: RPC) {
         server_send_message(rpc.encode().unwrap()).await;
     }

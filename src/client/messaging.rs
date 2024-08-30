@@ -31,12 +31,13 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
                     username: _username,
                     files,
                     emty_dirs,
+                    priviledge
                 } = rpc
                 {
                     API.set(Mutex::new(ClientApi::new_client(
                         files,
                         emty_dirs,
-                        crate::server::connection::Priviledge::ReadWrite,
+                        priviledge,
                     )))
                     .unwrap();
                 }
