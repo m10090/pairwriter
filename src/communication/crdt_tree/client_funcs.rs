@@ -1,15 +1,12 @@
 use crate::communication::rpc::RPC;
 
 use super::*;
-use automerge::{ReadDoc, ROOT};
-use bincode::Encode;
-use macros::conditional_pub;
-use std::io::Result as Res;
 use std::io::{self, Error};
 use std::path::Path;
 use tokio_tungstenite::tungstenite::Message;
 
-#[conditional_pub(test)]
+type Res<T> = io::Result<T>;
+
 trait ClientFunc {
     /// this opens a file and add it to the tree
     /// load the file from the Server
@@ -27,10 +24,12 @@ trait ClientFunc {
 
     fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()>;
 }
-pub trait ClientTx : ClientFunc {
+
+pub trait ClientTx: ClientFunc {
     fn build_tree(files: Vec<String>, emty_dirs: Vec<String>) -> Self;
     fn handle_msg(&mut self, tx: Message);
 }
+
 impl ClientFunc for FileTree {
     /// add a file to FileTree
 
@@ -202,6 +201,7 @@ impl ClientFunc for FileTree {
             ));
         }
         let (files, emty_dirs) = (&mut self.files, &mut self.emty_dirs);
+        let parent_dir = Self::parent_dir(&path);
 
         if let Ok(i) = emty_dirs.binary_search(&path) {
             // EMTY_DIRS_OP
@@ -229,6 +229,16 @@ impl ClientFunc for FileTree {
             self.tree.remove(&s);
             drop(s);
         });
+
+        if !self.in_dir(&parent_dir) {
+            match self.emty_dirs.binary_search(&parent_dir) {
+                Ok(_) => unreachable!(),
+                Err(i) => {
+                    self.emty_dirs.insert(i, parent_dir);
+                }
+            }
+        }
+
         Ok(())
     }
     fn make_dir(&mut self, path: String) -> Res<()> {
