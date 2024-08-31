@@ -43,23 +43,22 @@ pub(super) async fn connect_to_server(raw_stream: TcpStream) -> Result<(), Strin
             // client.close();
             return Err("Username already taken".to_string());
         }
+        let (files, emty_dirs) = API.lock().await.get_file_maps().await;
+        let rpc = RPC::ResConnect {
+            username: "Server".to_string(),
+            files,
+            emty_dirs,
+            priviledge: Priviledge::ReadWrite,
+        };
+        client
+            .send_message(rpc.encode().unwrap())
+            .await
+            .unwrap_or_else(|err| {
+                eprintln!("{}", err);
+            });
         queue.insert(message, client);
         return Ok(());
     }
-    let (files, emty_dirs) = API.lock().await.get_file_maps().await;
-    let rpc = RPC::ResConnect {
-        username: "Server".to_string(),
-        files,
-        emty_dirs,
-        priviledge: Priviledge::ReadWrite,
-    };
-    client
-        .send_message(rpc.encode().unwrap())
-        .await
-        .unwrap_or_else(|err| {
-            eprintln!("{}", err);
-        });
-
     Err("Invalid message".to_string())
 }
 pub(crate) async fn remove_dead_clients() {
@@ -122,10 +121,10 @@ impl Client {
         let rpc = RPC::decode(in_message.as_slice()).map_err(|e| e.to_string())?;
         return Ok(rpc);
     }
-    pub(crate) async fn close(mut self) -> Result<(), String>{
+    pub(crate) async fn close(mut self) -> Result<(), String> {
         self.ws_stream.close(None).await.map_err(|err| {
             eprintln!("{}", err);
-            format!("{}",err).to_string()
+            format!("{}", err).to_string()
         })
     }
 }
