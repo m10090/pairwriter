@@ -34,7 +34,7 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
                     priviledge
                 } = rpc
                 {
-                    API.set(Mutex::new(ClientApi::new_client(
+                    API.set(Mutex::new(ClientApi::new(
                         files,
                         emty_dirs,
                         priviledge,

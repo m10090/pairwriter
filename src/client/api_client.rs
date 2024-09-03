@@ -8,7 +8,6 @@ use crate::{
 };
 use automerge::{transaction::Transactable, ReadDoc, ROOT};
 use std::io;
-use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
 
 type Res<T> = io::Result<T>;
@@ -20,8 +19,7 @@ pub struct ClientApi {
 }
 
 impl ClientApi {
-    /// create a new client _`only this crate can see it`_
-    pub(crate) fn new_client(
+    pub(crate) fn new(
         files: Vec<String>,
         emty_dirs: Vec<String>,
         priviledge: Priviledge,
@@ -41,7 +39,6 @@ impl ClientApi {
                 return Err(e);
             }
             _ => {
-                drop(file_tree);
                 let rpc = RPC::ReqBufferTree { path };
                 let msg = rpc.encode().unwrap();
                 tokio::spawn(client_send_message(msg));
@@ -60,7 +57,7 @@ impl ClientApi {
         if self.priviledge == Priviledge::ReadOnly {
             todo!()
         }
-        client_send_message(rpc.encode().unwrap()).await; // this to stop message fluding
+        let _ = client_send_message(rpc.encode().unwrap()).await; // this to stop message fluding
     }
     pub async fn edit_buf(&mut self, path: String, pos: usize, del: isize, text: &str) {
         if self.priviledge == Priviledge::ReadOnly {
@@ -80,7 +77,7 @@ impl ClientApi {
         let changes = vec![change_in_bytes];
 
         let rpc = RPC::EditBuffer { path, changes }; // this is safe because this operation is idiempotent
-        client_send_message(rpc.encode().unwrap()).await;
+        let _ = client_send_message(rpc.encode().unwrap()).await;
     }
     pub async fn get_file_maps(&mut self) -> (Vec<String>, Vec<String>) {
         self.file_tree.get_maps()
