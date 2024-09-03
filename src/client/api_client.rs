@@ -15,7 +15,7 @@ type Res<T> = io::Result<T>;
 
 #[derive(Debug)]
 pub struct ClientApi {
-    file_tree: Mutex<FileTree>,
+    file_tree: FileTree,
     priviledge: Priviledge,
 }
 
@@ -27,13 +27,13 @@ impl ClientApi {
         priviledge: Priviledge,
     ) -> Self {
         Self {
-            file_tree: Mutex::new(FileTree::build_tree(files, emty_dirs)),
+            file_tree: FileTree::build_tree(files, emty_dirs),
             priviledge,
         }
     }
 
     pub async fn read_file(&mut self, path: String) -> Res<Vec<u8>> {
-        let file_tree = self.file_tree.lock().await;
+        let file_tree = &self.file_tree;
         let file = file_tree.read_buf(&path);
         let file = match file {
             Ok(file) => file,
@@ -52,9 +52,8 @@ impl ClientApi {
     }
 
     pub async fn read_tx(&mut self, msg: Message) {
-        let mut file_tree = self.file_tree.lock().await;
+        let file_tree = &mut self.file_tree;
         file_tree.handle_msg(msg);
-        
     }
 
     pub async fn send_rpc(&mut self, rpc: RPC) {
@@ -67,7 +66,7 @@ impl ClientApi {
         if self.priviledge == Priviledge::ReadOnly {
             return;
         }
-        let map = &mut self.file_tree.lock().await.tree;
+        let map = &mut self.file_tree.tree;
         let file = map.get_mut(&path).unwrap();
         let obj_id = file.get(ROOT, "content").unwrap().unwrap().1; // to do
         {
@@ -84,6 +83,6 @@ impl ClientApi {
         client_send_message(rpc.encode().unwrap()).await;
     }
     pub async fn get_file_maps(&mut self) -> (Vec<String>, Vec<String>) {
-        self.file_tree.lock().await.get_maps()
+        self.file_tree.get_maps()
     }
 }
