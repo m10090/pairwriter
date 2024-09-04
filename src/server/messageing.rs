@@ -38,7 +38,7 @@ async fn handle_message() -> Result<Message, String> {
             let rpc = client.read_message().await?;
             API.lock()
                 .await
-                .read_tx(rpc, client, username)
+                .exchange_rpc(rpc, client, username)
                 .await
                 .map_err(|_| "error reading the message".to_string())
         }));

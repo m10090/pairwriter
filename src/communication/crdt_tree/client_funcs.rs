@@ -338,7 +338,7 @@ impl ClientTx for FileTree {
             }
         };
         match rpc {
-            RPC::Mark {
+            RPC::ResMark {
                 path,
                 s_position,
                 e_position,

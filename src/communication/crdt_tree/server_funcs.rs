@@ -525,7 +525,7 @@ impl ServerTx for FileTree {
                 s_position,
                 e_position,
             } => {
-                let rpc = RPC::Mark {
+                let rpc = RPC::ResMark {
                     path,
                     s_position,
                     e_position,
@@ -565,7 +565,7 @@ impl ServerTx for FileTree {
             }
             RPC::ResSendFile { .. }
             | RPC::ResMoveCursor { .. }
-            | RPC::Mark { .. }
+            | RPC::ResMark { .. }
             | RPC::ResFileSaved { .. } => {
                 eprintln!("unhandled message {:?}", tx);
                 println!("this is a server message");

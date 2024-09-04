@@ -60,7 +60,7 @@ impl ServerApi {
         server_send_message(rpc.encode().unwrap()).await;
     }
 
-    pub async fn read_tx(
+    pub async fn exchange_rpc(
         // will not be used in the fron-end
         &mut self,
         rpc: RPC,

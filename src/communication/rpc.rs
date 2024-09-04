@@ -49,7 +49,7 @@ pub enum RPC {
         s_position: usize,
         e_position: usize,
     },
-    Mark {
+    ResMark {
         path: String,
         s_position: usize,
         e_position: usize,
