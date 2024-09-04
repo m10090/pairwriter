@@ -80,7 +80,7 @@ pub enum RPC {
     RequestSaveFile {
         path: String,
     },
-    ServerFileSaved{
+    ResFileSaved{
         path: String,
     },
 

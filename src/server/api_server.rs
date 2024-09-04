@@ -83,7 +83,7 @@ impl ServerApi {
         let mut queue = QUEUE.lock().await;
         match queue.remove(username) {
             Some(c) => {
-                c.close();
+                c.close().await?;
                 Ok(())
             }
             None => Err("Client not found".to_string()),

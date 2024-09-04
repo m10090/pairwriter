@@ -12,8 +12,6 @@ use tokio_tungstenite::tungstenite::Message;
 use super::*;
 use crate::communication::rpc::RPC;
 
-
-
 #[cfg(test)]
 mod server_tests;
 
@@ -141,7 +139,7 @@ impl ServerFunc for FileTree {
                 return Err(Error::new(
                     io::ErrorKind::AlreadyExists,
                     "file path already exists",
-                ))
+                ));
             }
             Err(i) => files.insert(i, new_path.clone()),
         }
@@ -302,7 +300,6 @@ impl ServerFunc for FileTree {
             }
         }
         let end = r;
-
 
         #[cfg(not(test))]
         fs::remove_dir_all(&path)?;
@@ -468,7 +465,7 @@ impl ServerTx for FileTree {
             }
             RPC::RequestSaveFile { path } => {
                 self.save_buf(path.clone()).map_err(Self::err_msg)?;
-                let rpc = RPC::ServerFileSaved { path };
+                let rpc = RPC::ResFileSaved { path };
                 Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
@@ -557,8 +554,30 @@ impl ServerTx for FileTree {
                 Ok(Message::binary(vec![]))
             }
 
-            e => {
-                println!("unhandled message {:?}", e);
+            RPC::ResConnect { .. } => {
+                eprintln!("unhandled message {:?}", tx);
+                Err(())
+            }
+            RPC::ChangePriviledge { .. } => {
+                eprintln!("unhandled message {:?}", tx);
+                println!("client trying to change priviledge");
+                Err(())
+            }
+            RPC::ResSendFile { .. }
+            | RPC::ResMoveCursor { .. }
+            | RPC::Mark { .. }
+            | RPC::ResFileSaved { .. } => {
+                eprintln!("unhandled message {:?}", tx);
+                println!("this is a server message");
+                Err(())
+            } 
+            RPC::Error(e) => {
+                  println!("error occurred: {} ", e);
+                  Err(())
+            }
+            RPC::AddUsername { .. } => {
+                eprintln!("unhandled message {:?}", tx);
+                println!("this should be send in connection request only");
                 Err(())
             }
         }
@@ -567,4 +586,3 @@ impl ServerTx for FileTree {
         ServerFunc::open_file(self, path)
     }
 }
-
