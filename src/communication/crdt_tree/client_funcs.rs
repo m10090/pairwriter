@@ -7,7 +7,7 @@ use tokio_tungstenite::tungstenite::Message;
 
 type Res<T> = io::Result<T>;
 
-trait ClientFunc {
+trait PrivateClientFn {
     /// this opens a file and add it to the tree
     /// load the file from the Server
     fn create_file(&mut self, filename: String) -> Res<()>; // EMTY_DIRS_OP
@@ -25,12 +25,12 @@ trait ClientFunc {
     fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()>;
 }
 
-pub trait ClientTx: ClientFunc {
+pub trait PubClientFn: PrivateClientFn {
     fn build_tree(files: Vec<String>, emty_dirs: Vec<String>) -> Self;
     fn handle_msg(&mut self, tx: Message);
 }
 
-impl ClientFunc for FileTree {
+impl PrivateClientFn for FileTree {
     /// add a file to FileTree
 
     fn create_file(&mut self, path: String) -> Res<()> {
@@ -312,7 +312,7 @@ impl ClientFunc for FileTree {
     }
 }
 
-impl ClientTx for FileTree {
+impl PubClientFn for FileTree {
     fn build_tree(mut files: Vec<String>, mut emty_dirs: Vec<String>) -> Self {
         files.sort_unstable();
         emty_dirs.sort_unstable();
@@ -380,7 +380,9 @@ impl ClientTx for FileTree {
             RPC::DeleteDirectory { path } => {
                 self.rm_dir(path).unwrap_or_else(|e| eprintln!("{}", e));
             }
-            RPC::RequestSaveFile { path } => todo!(), // should call the api to remove the dirty
+            RPC::FileSaved { .. } => {
+                eprintln!("Invalid RPC");
+            }, // should call the api to remove the dirty
             // bit
             RPC::ResSendFile { path, file } => {
                 self.tree

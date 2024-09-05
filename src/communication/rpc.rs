@@ -77,10 +77,11 @@ pub enum RPC {
         path: String,
         new_path: String,
     },
-    RequestSaveFile {
+    ReqSaveFile {
         path: String,
     },
-    ServerFileSaved{
+    /// this mean that the server saved the file
+    FileSaved{ 
         path: String,
     },
 

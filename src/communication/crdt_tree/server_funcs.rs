@@ -12,12 +12,10 @@ use tokio_tungstenite::tungstenite::Message;
 use super::*;
 use crate::communication::rpc::RPC;
 
-
-
 #[cfg(test)]
 mod server_tests;
 
-trait ServerFunc {
+trait PrivateServerFn {
     /// add file to the tree
     fn open_file(&mut self, path: String) -> Res<()>;
     fn create_file(&mut self, path: String) -> Res<()>;
@@ -34,18 +32,18 @@ trait ServerFunc {
     fn get_automerge(&mut self, path: &String) -> Res<Vec<u8>>;
 }
 
-pub trait ServerTx: ServerFunc {
+pub(crate) trait PubServerFn: PrivateServerFn {
     fn build_file_tree() -> Self;
-    async fn handel_msg(
+    async fn handle_msg(
         &mut self,
         tx: RPC,
-        client: &mut Client,
+        client: Option<&mut Client>,
         username: &String,
     ) -> Result<Message, ()>;
     fn open_file(&mut self, path: String) -> Res<()>;
 }
 
-impl ServerFunc for FileTree {
+impl PrivateServerFn for FileTree {
     fn open_file(&mut self, path: String) -> Res<()> {
         if self.files.binary_search(&path).is_err() {
             return Err(Error::new(
@@ -141,7 +139,7 @@ impl ServerFunc for FileTree {
                 return Err(Error::new(
                     io::ErrorKind::AlreadyExists,
                     "file path already exists",
-                ))
+                ));
             }
             Err(i) => files.insert(i, new_path.clone()),
         }
@@ -303,7 +301,6 @@ impl ServerFunc for FileTree {
         }
         let end = r;
 
-
         #[cfg(not(test))]
         fs::remove_dir_all(&path)?;
 
@@ -400,7 +397,7 @@ impl ServerFunc for FileTree {
     }
 }
 
-impl ServerTx for FileTree {
+impl PubServerFn for FileTree {
     fn build_file_tree() -> Self {
         // get all files
         use walkdir::WalkDir;
@@ -410,7 +407,7 @@ impl ServerTx for FileTree {
             .filter(|e| e.file_type().is_file())
             .map(|e| e.path().display().to_string())
             .collect::<Vec<String>>();
-        files.sort();
+        files.sort_unstable();
         let mut res = Self {
             files,
             tree: HashMap::new(),
@@ -428,10 +425,12 @@ impl ServerTx for FileTree {
             // directory
             .filter(|e| is_directory_empty(e).unwrap_or(false))
             .collect::<Vec<String>>();
+
         // this is the fix of the "./" problem
         if let Ok(i) = emty_dirs.binary_search(&".//".to_string()) {
             emty_dirs.remove(i);
         }
+        // if the current directory is empty
         if is_directory_empty("./").unwrap() {
             if let Err(i) = emty_dirs.binary_search(&"./".to_string()) {
                 emty_dirs.insert(i, "./".to_string());
@@ -440,15 +439,19 @@ impl ServerTx for FileTree {
         res.emty_dirs = emty_dirs;
         res
     }
-    async fn handel_msg(
+
+    /// this handles the message from the client or the server and returns the response
+    /// if the client is None this means that the message is from the server
+    async fn handle_msg(
         &mut self,
         tx: RPC,
-        client: &mut Client,
+        client: Option<&mut Client>,
         username: &String,
     ) -> Result<Message, ()> {
         match tx {
-            RPC::EditBuffer { .. } | RPC::RequestSaveFile { .. }
-                if client.priviledge == Priviledge::ReadOnly =>
+            RPC::EditBuffer { .. } | RPC::ReqSaveFile { .. }
+                if client.is_some()
+                    && client.as_ref().unwrap().priviledge == Priviledge::ReadOnly =>
             {
                 eprintln!("Unauthorized access by user {username}");
                 eprintln!("user trying to edit file without access {username}");
@@ -466,9 +469,9 @@ impl ServerTx for FileTree {
                 let rpc = RPC::EditBuffer { path, changes };
                 Ok(rpc.encode().map_err(Self::err_msg)?)
             }
-            RPC::RequestSaveFile { path } => {
+            RPC::ReqSaveFile { path } => {
                 self.save_buf(path.clone()).map_err(Self::err_msg)?;
-                let rpc = RPC::ServerFileSaved { path };
+                let rpc = RPC::FileSaved { path };
                 Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
@@ -478,10 +481,20 @@ impl ServerTx for FileTree {
             | RPC::DeleteDirectory { .. }
             | RPC::MoveFile { .. }
             | RPC::MoveDirectory { .. }
-                if client.priviledge == Priviledge::ReadOnly =>
+                if client.is_some()
+                    && client.as_ref().unwrap().priviledge == Priviledge::ReadOnly =>
             {
                 eprintln!("Unauthorized access by user {username}");
                 eprintln!("user trying to edit directory structure without access {username}");
+                client
+                    .unwrap()
+                    .send_message(
+                        RPC::Error("Unauthorized access".to_string())
+                            .encode()
+                            .map_err(Self::err_msg)?,
+                    )
+                    .await
+                    .map_err(Self::err_msg)?; // await is needed as I think
                 Err(())
             }
 
@@ -546,15 +559,23 @@ impl ServerTx for FileTree {
                 Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
-            RPC::ReqBufferTree { path } => {
+            RPC::ReqBufferTree { path } if client.is_some() => {
                 let file = self.get_automerge(&path).map_err(Self::err_msg)?;
 
                 let rpc = RPC::ResSendFile { path, file };
                 client
+                    .unwrap()
                     .send_message(rpc.encode().map_err(Self::err_msg)?)
                     .await
                     .map_err(Self::err_msg)?; // await is needed as I think
-                Ok(Message::binary(vec![]))
+                Ok(Message::binary(vec![])) 
+            }
+
+            RPC::ReqBufferTree { .. } => {
+                // if this mean that this is server sent as the Some(client) is false
+                eprintln!("unhandled message {:?}", tx);
+                println!("this is should only be send by the client");
+                Err(())
             }
 
             RPC::ResConnect { .. } => {
@@ -569,14 +590,14 @@ impl ServerTx for FileTree {
             RPC::ResSendFile { .. }
             | RPC::ResMoveCursor { .. }
             | RPC::ResMark { .. }
-            | RPC::ResFileSaved { .. } => {
+            | RPC::FileSaved { .. } => {
                 eprintln!("unhandled message {:?}", tx);
                 println!("this is a server message");
                 Err(())
-            } 
+            }
             RPC::Error(e) => {
-                  println!("error occurred: {} ", e);
-                  Err(())
+                println!("error occurred: {} ", e);
+                Err(())
             }
             RPC::AddUsername { .. } => {
                 eprintln!("unhandled message {:?}", tx);
@@ -586,7 +607,6 @@ impl ServerTx for FileTree {
         }
     }
     fn open_file(&mut self, path: String) -> Res<()> {
-        ServerFunc::open_file(self, path)
+        PrivateServerFn::open_file(self, path)
     }
 }
-

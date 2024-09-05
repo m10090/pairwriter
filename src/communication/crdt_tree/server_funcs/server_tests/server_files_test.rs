@@ -6,7 +6,7 @@ use std::{
 
 use serial_test::serial;
 
-use super::{assert_vec, FileTree, ServerFunc, FILES};
+use super::{assert_vec, FileTree, PrivateServerFn, FILES};
 // TODO: explain the tests
 #[test]
 fn create_file_change_in_emty_dir() {

@@ -1,7 +1,7 @@
 use crate::{
     client::messaging::client_send_message,
     communication::{
-        crdt_tree::{client_funcs::ClientTx as _, FileTree},
+        crdt_tree::{client_funcs::PubClientFn as _, FileTree},
         rpc::RPC,
     },
     server::connection::Priviledge,
@@ -59,7 +59,7 @@ impl ClientApi {
         }
         let _ = client_send_message(rpc.encode().unwrap()).await; // this to stop message fluding
     }
-    pub async fn edit_buf(&mut self, path: String, pos: usize, del: isize, text: &str) {
+    pub async fn edit_buf(&mut self, path: String, pos: Option<usize>, del: Option<isize>, text: &str) {
         if self.priviledge == Priviledge::ReadOnly {
             return;
         }
@@ -68,8 +68,11 @@ impl ClientApi {
         let obj_id = file.get(ROOT, "content").unwrap().unwrap().1; // to do
         {
             let mut tx = file.transaction();
-            let _ = tx.splice_text(obj_id, pos, del, text);
-
+            if pos.is_none() && del.is_none() {
+                let _ = tx.update_text(&obj_id, text);
+            } else {
+                let _ = tx.splice_text(obj_id, pos.unwrap(), del.unwrap(), text);
+            }
             tx.commit();
         }
         let change = file.get_last_local_change().unwrap();

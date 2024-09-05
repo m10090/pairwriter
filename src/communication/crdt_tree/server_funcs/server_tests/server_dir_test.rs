@@ -1,5 +1,5 @@
 use super::{assert_vec, FILES};
-use super::{FileTree, ServerFunc};
+use super::{FileTree, PrivateServerFn};
 
 // to do explane the tests
 #[test]

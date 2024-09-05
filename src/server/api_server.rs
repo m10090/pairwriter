@@ -1,11 +1,13 @@
 use std::collections::VecDeque;
+use std::io;
 
 use crate::communication::crdt_tree::FileTree;
-use crate::communication::{crdt_tree::server_funcs::ServerTx, rpc::RPC};
+use crate::communication::{crdt_tree::server_funcs::PubServerFn, rpc::RPC};
 use crate::server::connection::Client;
 use crate::server::messageing::server_send_message;
-use automerge::{transaction::Transactable as _, ReadDoc as _, ROOT};
-use tokio::sync::{Mutex, RwLock};
+use automerge::transaction::Transactable;
+use automerge::{ReadDoc as _, ROOT};
+use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message;
 
 use super::connection::Priviledge;
@@ -25,7 +27,7 @@ impl ServerApi {
         }
     }
 
-    pub async fn read_file_server(&self, path: String) -> std::io::Result<Vec<u8>> {
+    pub async fn read_file_server(&self, path: String) -> io::Result<Vec<u8>> {
         let mut file = self.file_tree.lock().await;
         let res_buf = file.read_buf(&path);
         let buf = match res_buf {
@@ -44,13 +46,27 @@ impl ServerApi {
         Ok(buf)
     }
 
-    pub async fn edit_buf(&mut self, path: String, pos: usize, del: isize, text: &str) {
+    /// update the buffer in the  path
+    /// if del and text is None, then it is an total update operation
+    /// if one of them is None, then it does nothing
+    /// else it is a splice operation
+    pub async fn edit_buf(
+        &mut self,
+        path: String,
+        pos: Option<usize>,
+        del: Option<isize>,
+        text: &str,
+    ) {
         let map = &mut self.file_tree.lock().await.tree;
         let file = map.get_mut(&path).unwrap();
         let obj_id = file.get(ROOT, "content").unwrap().unwrap().1; // to do
         {
             let mut tx = file.transaction();
-            let _ = tx.splice_text(obj_id, pos, del, text);
+            if pos.is_none() && del.is_none() {
+                let _ = tx.update_text(&obj_id, text);
+            } else {
+                let _ = tx.splice_text(obj_id, pos.unwrap(), del.unwrap(), text);
+            }
             tx.commit();
         }
         let change = file.get_last_local_change().unwrap();
@@ -60,8 +76,7 @@ impl ServerApi {
         server_send_message(rpc.encode().unwrap()).await;
     }
 
-    pub async fn exchange_rpc(
-        // will not be used in the fron-end
+    pub(super) async fn read_rpc(
         &mut self,
         rpc: RPC,
         client: &mut Client,
@@ -69,7 +84,7 @@ impl ServerApi {
     ) -> Result<Message, ()> {
         let mut file = self.file_tree.lock().await;
         self.queue.lock().await.push_back(rpc.clone());
-        file.handel_msg(rpc, client, username).await //todo
+        file.handle_msg(rpc, Some(client), username).await //todo
     }
     pub async fn queue_pop(&mut self) -> Option<RPC> {
         let mut queue = self.queue.lock().await;
@@ -83,7 +98,7 @@ impl ServerApi {
         let mut queue = QUEUE.lock().await;
         match queue.remove(username) {
             Some(c) => {
-                c.close();
+                c.close().await?;
                 Ok(())
             }
             None => Err("Client not found".to_string()),
@@ -107,6 +122,16 @@ impl ServerApi {
     }
 
     pub async fn send_rpc(&self, rpc: RPC) {
-        server_send_message(rpc.encode().unwrap()).await;
+
+
+        if let Ok(x) = self
+            .file_tree
+            .lock()
+            .await
+            .handle_msg(rpc.clone(), None, &"".to_string())
+            .await
+        {
+            server_send_message(x).await;
+        }
     }
 }

@@ -6,3 +6,6 @@
 - [ ] add error enum
 - [ ] take in care client duplecated username
 - [ ] alow client to change (his/her) privilege
+- [ ] code generation for private functions 
+- [ ] ignore some files and directores
+- [ ] split RPC
