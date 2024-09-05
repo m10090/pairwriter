@@ -21,7 +21,7 @@ pub async fn start_server(port: u16) {
     }
 }
 
-pub(crate) async fn is_queue_empty() -> bool {
+pub(crate) async fn no_client_connected() -> bool {
     // this is pub for integration tests
     QUEUE.lock().await.is_empty()
 }

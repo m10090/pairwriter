@@ -5,7 +5,7 @@ use super::*;
 /// this is public so that it can be used by the server
 async fn broadcast_message(msg: Message) -> Result<(), String> {
     dbg!(&msg);
-    if is_queue_empty().await {
+    if no_client_connected().await {
         use tokio::time::{sleep, Duration};
         sleep(Duration::from_millis(200)).await;
         return Err("No clients connected".to_string());
@@ -36,8 +36,7 @@ async fn handle_message() -> Result<Message, String> {
     for (username, client) in queue.iter_mut() {
         futrs.push(Box::pin(async {
             let rpc = client.read_message().await?;
-            API.lock()
-                .await
+            API
                 .read_rpc(rpc, client, username)
                 .await
                 .map_err(|_| "error reading the message".to_string())

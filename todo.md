@@ -9,3 +9,4 @@
 - [ ] code generation for private functions 
 - [ ] ignore some files and directores
 - [ ] split RPC
+- [ ] await in server queue without issue

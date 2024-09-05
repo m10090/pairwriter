@@ -7,23 +7,26 @@ use crate::server::connection::Client;
 use crate::server::messageing::server_send_message;
 use automerge::transaction::Transactable;
 use automerge::{ReadDoc as _, ROOT};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, Semaphore};
 use tokio_tungstenite::tungstenite::Message;
-
+use tokio::sync::mpsc::{unbounded_channel, UnboundedSender, UnboundedReceiver};
 use super::connection::Priviledge;
 use super::variables::QUEUE;
 
 #[derive(Debug)]
 pub struct ServerApi {
     file_tree: Mutex<FileTree>,
-    queue: Mutex<VecDeque<RPC>>,
+    sender: Mutex<UnboundedSender<RPC>>,
+    receiver: Mutex<UnboundedReceiver<RPC>>,
 }
 
 impl ServerApi {
     pub(crate) fn new_server() -> Self {
+        let (sender, receiver) = unbounded_channel();
         Self {
             file_tree: Mutex::new(FileTree::build_file_tree()),
-            queue: Mutex::new(VecDeque::new()),
+            sender: Mutex::new(sender),
+            receiver: Mutex::new(receiver),
         }
     }
 
@@ -51,7 +54,7 @@ impl ServerApi {
     /// if one of them is None, then it does nothing
     /// else it is a splice operation
     pub async fn edit_buf(
-        &mut self,
+         &self,
         path: String,
         pos: Option<usize>,
         del: Option<isize>,
@@ -77,19 +80,22 @@ impl ServerApi {
     }
 
     pub(super) async fn read_rpc(
-        &mut self,
+        &self,
         rpc: RPC,
         client: &mut Client,
         username: &String,
     ) -> Result<Message, ()> {
         let mut file = self.file_tree.lock().await;
-        self.queue.lock().await.push_back(rpc.clone());
-        file.handle_msg(rpc, Some(client), username).await //todo
+        let result = file.handle_msg(rpc.clone(), Some(client), username).await?; //todo
+        self.sender.lock().await.send(rpc);
+        Ok(result)
     }
-    pub async fn queue_pop(&mut self) -> Option<RPC> {
-        let mut queue = self.queue.lock().await;
-        queue.pop_front()
+
+    pub async fn queue_pop( &self) -> Option<RPC> {
+        self.receiver.lock().await.recv().await
+        
     }
+
     pub async fn get_file_maps(&self) -> (Vec<String>, Vec<String>) {
         self.file_tree.lock().await.get_maps()
     }
@@ -122,8 +128,6 @@ impl ServerApi {
     }
 
     pub async fn send_rpc(&self, rpc: RPC) {
-
-
         if let Ok(x) = self
             .file_tree
             .lock()

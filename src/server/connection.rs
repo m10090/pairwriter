@@ -43,7 +43,7 @@ pub(super) async fn connect_to_server(raw_stream: TcpStream) -> Result<(), Strin
             // client.close();
             return Err("Username already taken".to_string());
         }
-        let (files, emty_dirs) = API.lock().await.get_file_maps().await;
+        let (files, emty_dirs) = API.get_file_maps().await;
         let rpc = RPC::ResConnect {
             username: "Server".to_string(),
             files,
