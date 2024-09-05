@@ -12,6 +12,8 @@ use tokio_tungstenite::tungstenite::Message;
 use super::*;
 use crate::communication::rpc::RPC;
 
+
+
 #[cfg(test)]
 mod server_tests;
 
@@ -139,7 +141,7 @@ impl ServerFunc for FileTree {
                 return Err(Error::new(
                     io::ErrorKind::AlreadyExists,
                     "file path already exists",
-                ));
+                ))
             }
             Err(i) => files.insert(i, new_path.clone()),
         }
@@ -300,6 +302,7 @@ impl ServerFunc for FileTree {
             }
         }
         let end = r;
+
 
         #[cfg(not(test))]
         fs::remove_dir_all(&path)?;
@@ -465,7 +468,7 @@ impl ServerTx for FileTree {
             }
             RPC::RequestSaveFile { path } => {
                 self.save_buf(path.clone()).map_err(Self::err_msg)?;
-                let rpc = RPC::ResFileSaved { path };
+                let rpc = RPC::ServerFileSaved { path };
                 Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
@@ -586,3 +589,4 @@ impl ServerTx for FileTree {
         ServerFunc::open_file(self, path)
     }
 }
+

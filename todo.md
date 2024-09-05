@@ -5,5 +5,4 @@
 - [ ] write client test
 - [ ] add error enum
 - [ ] take in care client duplecated username
-- [ ] allow client to change (his/her) privilege
-- [ ] allow server to close
+- [ ] alow client to change (his/her) privilege
