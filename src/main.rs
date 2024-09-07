@@ -8,6 +8,7 @@ use std::env::args;
 #[tokio::main]
 async fn main() {
     let args: Vec<String> = args().collect();
+
     if args.len() < 2 {
         panic!("Usage: (client|server) <port>");
     }

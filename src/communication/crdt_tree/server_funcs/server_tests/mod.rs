@@ -89,7 +89,6 @@ fn right_naming() {
         for i in res.emty_dirs.iter() {
             assert!(FileTree::valid_dir_path(i));
         }
-        dbg!(&res.emty_dirs);
         res.emty_dirs
             .binary_search(&"./emty_dir/".to_string())
             .unwrap();

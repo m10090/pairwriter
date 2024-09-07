@@ -1,4 +1,3 @@
-
 use super::*;
 use futures::Future;
 use tokio_tungstenite::tungstenite::{Error, Message};
@@ -31,21 +30,16 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
                     username: _username,
                     files,
                     emty_dirs,
-                    priviledge
+                    priviledge,
                 } = rpc
                 {
-                    API.set(Mutex::new(ClientApi::new(
-                        files,
-                        emty_dirs,
-                        priviledge,
-                    )))
-                    .unwrap();
+                    API.set(Mutex::new(ClientApi::new(files, emty_dirs, priviledge)))
+                        .unwrap();
                 }
             }
+            dbg!(&message);
             #[cfg(feature = "integration_testing_client")]
             {
-                dbg!(&message);
-                dbg!("message reseved");
                 tokio::spawn(crate::integration_testing::reseived_message(
                     message.clone(),
                 ));

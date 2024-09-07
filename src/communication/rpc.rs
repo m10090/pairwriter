@@ -12,7 +12,8 @@ use crate::server::connection::Priviledge;
 pub enum RPC {
     /// Response to a connection request
     ResConnect{
-        username: String, // server username
+        /// server username
+        username: String, 
         files: Vec<String>,
         emty_dirs: Vec<String>,
         priviledge: Priviledge,

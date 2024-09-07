@@ -1,5 +1,6 @@
-use crate::server::connection::{Client, Priviledge};
+use crate::server::connection::{ClientRes, Priviledge};
 use automerge::{transaction::Transactable, ROOT};
+use futures::SinkExt as _;
 use std::{
     fs::{self, File},
     io::{self, Error, Write},
@@ -37,7 +38,7 @@ pub(crate) trait PubServerFn: PrivateServerFn {
     async fn handle_msg(
         &mut self,
         tx: RPC,
-        client: Option<&mut Client>,
+        client: Option<Priviledge>,
         username: &String,
     ) -> Result<Message, ()>;
     fn open_file(&mut self, path: String) -> Res<()>;
@@ -109,7 +110,6 @@ impl PrivateServerFn for FileTree {
         };
 
         files.insert(i, path);
-        dbg!(&files);
         Ok(())
     }
 
@@ -445,13 +445,12 @@ impl PubServerFn for FileTree {
     async fn handle_msg(
         &mut self,
         tx: RPC,
-        client: Option<&mut Client>,
+        priviledge: Option<Priviledge>,
         username: &String,
     ) -> Result<Message, ()> {
         match tx {
             RPC::EditBuffer { .. } | RPC::ReqSaveFile { .. }
-                if client.is_some()
-                    && client.as_ref().unwrap().priviledge == Priviledge::ReadOnly =>
+                if priviledge.is_some() && priviledge.unwrap() == Priviledge::ReadOnly =>
             {
                 eprintln!("Unauthorized access by user {username}");
                 eprintln!("user trying to edit file without access {username}");
@@ -481,20 +480,19 @@ impl PubServerFn for FileTree {
             | RPC::DeleteDirectory { .. }
             | RPC::MoveFile { .. }
             | RPC::MoveDirectory { .. }
-                if client.is_some()
-                    && client.as_ref().unwrap().priviledge == Priviledge::ReadOnly =>
+                if priviledge.is_some() && priviledge.unwrap() == Priviledge::ReadOnly =>
             {
                 eprintln!("Unauthorized access by user {username}");
                 eprintln!("user trying to edit directory structure without access {username}");
-                client
-                    .unwrap()
-                    .send_message(
-                        RPC::Error("Unauthorized access".to_string())
-                            .encode()
-                            .map_err(Self::err_msg)?,
-                    )
-                    .await
-                    .map_err(Self::err_msg)?; // await is needed as I think
+                // client
+                //     .unwrap()
+                //     .send_message(
+                //         RPC::Error("Unauthorized access".to_string())
+                //             .encode()
+                //             .map_err(Self::err_msg)?,
+                //     )
+                //     .await
+                //     .map_err(Self::err_msg)?; // await is needed as I think
                 Err(())
             }
 
@@ -559,16 +557,22 @@ impl PubServerFn for FileTree {
                 Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
-            RPC::ReqBufferTree { path } if client.is_some() => {
+            RPC::ReqBufferTree { path } if priviledge.is_some() => {
                 let file = self.get_automerge(&path).map_err(Self::err_msg)?;
 
                 let rpc = RPC::ResSendFile { path, file };
-                client
-                    .unwrap()
-                    .send_message(rpc.encode().map_err(Self::err_msg)?)
-                    .await
-                    .map_err(Self::err_msg)?; // await is needed as I think
-                Ok(Message::binary(vec![])) 
+                use crate::server::variables::CLIENTS_SEND;
+                let clients_send = CLIENTS_SEND.lock().await;
+                if let Some(client) = clients_send.get(username) {
+                    client
+                        .lock()
+                        .await
+                        .feed(rpc.encode().map_err(Self::err_msg)?)
+                        .await;
+               } // this should be an error
+
+
+                Ok(Message::Ping(vec![])) // this mean that reset the message awaiting
             }
 
             RPC::ReqBufferTree { .. } => {

@@ -4,28 +4,32 @@ use super::*;
 /// This function will broadcast a message to all connected clients
 /// this is public so that it can be used by the server
 async fn broadcast_message(msg: Message) -> Result<(), String> {
-    dbg!(&msg);
     if no_client_connected().await {
         use tokio::time::{sleep, Duration};
         sleep(Duration::from_millis(200)).await;
         return Err("No clients connected".to_string());
     }
-    let mut queue = QUEUE.lock().await;
-    let mut futures = Vec::with_capacity(queue.len());
-    for (_, client) in queue.iter_mut() {
-        futures.push(client.send_message(msg.clone()));
+    let clients_send = CLIENTS_SEND.lock().await;
+    let mut futures = Vec::with_capacity(clients_send.len());
+    for (_, client) in clients_send.iter() {
+        let client = client.clone();
+        let msg = msg.clone();
+        futures.push(async move { 
+            client.lock().await.feed(msg).await
+        });
     }
+    // drop(clients_send);// freeing the client send
     let futures = futures::future::join_all(futures).await;
     for i in futures.into_iter() {
-        i?
+        i.map_err(|e| e.to_string())?
     }
     Ok(())
 }
 async fn handle_message() -> Result<Message, String> {
-    let mut queue = QUEUE.lock().await;
-    let mut futrs = Vec::with_capacity(queue.len());
-    if queue.is_empty() {
-        drop(queue); // free the lock
+    let mut client_res = CLIENTS_RES.lock().await;
+    let mut futrs = Vec::with_capacity(client_res.len());
+    if client_res.is_empty() {
+        drop(client_res); // free the lock
 
         use tokio::time::{sleep, Duration};
         sleep(Duration::from_millis(200)).await;
@@ -33,11 +37,12 @@ async fn handle_message() -> Result<Message, String> {
         return Err("No clients connected".to_string());
     }
     // read message from all clients
-    for (username, client) in queue.iter_mut() {
-        futrs.push(Box::pin(async {
-            let rpc = client.read_message().await?;
-            API
-                .read_rpc(rpc, client, username)
+    for (username, client) in client_res.iter_mut() {
+        let client = client.clone();
+        futrs.push(Box::pin(async move {
+            let priviledge = client.lock().await.priviledge;
+            let rpc = client.lock().await.read_message().await?;
+            API.read_rpc(rpc, priviledge, username)
                 .await
                 .map_err(|_| "error reading the message".to_string())
         }));
@@ -49,21 +54,18 @@ async fn handle_message() -> Result<Message, String> {
     };
 
     if res.is_err() {
-        // don't forget the free the queue
-        drop(queue);
         // could be all clients are closed
         connection::remove_dead_clients().await;
-        return Err("this".to_string());
+        return Err("all clients are closed".to_string());
     }
     res
 }
 
 pub(crate) async fn handle_messages() -> ! {
     let (tx, mut rx) = mpsc::unbounded_channel();
-    TX.set(tx).unwrap();
+    TX.set(tx.clone()).unwrap();
     loop {
         async {
-            println!("waiting for message");
             connection::remove_dead_clients().await;
             let message = tokio::select! {
                 client_message = handle_message() => client_message?,

@@ -6,7 +6,7 @@ if [[ -z "$port" ]]; then
 fi
 
 
-cat ./SERVER_TEST_CODE_SNIPPET.rs > ./test_injection.rs
+cat ./SERVER/SERVER_TEST_CODE_SNIPPET.rs > ./test_injection.rs
 
 # Injecting the test code into the server code
 timeout -s SIGINT 50s cargo run --features "integration_testing_server"  server $port

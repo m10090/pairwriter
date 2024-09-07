@@ -10,3 +10,5 @@
 - [ ] ignore some files and directores
 - [ ] split RPC
 - [ ] await in server queue without issue
+- [ ] split the client hashmap to 2 streams
+- [ ] rewrite the integration tests

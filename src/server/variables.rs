@@ -1,15 +1,22 @@
 use crate::server::api_server::{self, ServerApi};
 
 use super::*;
-use std::sync::OnceLock;
-use connection::Client;
-
+use connection::ClientRes;
+use futures::stream::SplitSink;
+use std::sync::{Arc, OnceLock};
+use tokio::net::TcpStream;
 
 lazy_static! {
-    pub(super) static ref QUEUE: Mutex<HashMap<String, Client>> = Mutex::new(HashMap::new());
+    pub static ref API: ServerApi = ServerApi::new_server();
+}
+
+lazy_static! {
+    pub(super) static ref CLIENTS_RES: Mutex<HashMap<String, Arc<Mutex<ClientRes>>>> =
+        Mutex::new(HashMap::new());
 }
 lazy_static! {
-    pub  static  ref  API: ServerApi = ServerApi::new_server();
+    pub(crate) static ref CLIENTS_SEND: Mutex<HashMap<String, Arc<Mutex<SinkSend>>>> =
+        Mutex::new(HashMap::new());
 }
 
 pub(super) static TX: OnceLock<mpsc::UnboundedSender<Message>> = OnceLock::new();

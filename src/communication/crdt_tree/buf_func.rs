@@ -19,6 +19,8 @@ impl FileTree {
             "The file does not exist",
         ))
     }
+
+
     pub(super) fn drop_buf(&mut self, path: String) {
         self.tree.remove(&path);
     }
@@ -27,7 +29,7 @@ impl FileTree {
         if file.is_none() && self.files.binary_search(path).is_ok() {
             Err(Error::new(
                 io::ErrorKind::NotConnected,
-                "file not found in the file",
+                "file is not in the memory tree",
             )) // this should make the client ask for the file
         } else {
             let file = file.ok_or(Error::new(
@@ -40,7 +42,8 @@ impl FileTree {
                     if val.is_str() {
                         Ok(file.text(id).unwrap().as_bytes().to_vec())
                     } else {
-                        Ok(val.to_bytes().unwrap().to_vec())
+                        // Ok(val.to_bytes().unwrap().to_vec()) // there is some issue there
+                        Ok(vec![])
                     }
                 }
                 Err(_) => Err(Error::new(
