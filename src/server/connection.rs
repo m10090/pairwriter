@@ -8,9 +8,9 @@ use tokio_tungstenite::{accept_async, tungstenite::Message};
 
 use super::*;
 
-async fn handle_connection(raw_stream: TcpStream) -> Result<(SinkSend, SinkRes), String> {
+async fn handle_connection(raw_stream: TcpStream) -> Result<WebSocketStream<TcpStream>, String> {
     match accept_async(raw_stream).await {
-        Ok(ws_stream) => Ok(ws_stream.split()),
+        Ok(ws_stream) => Ok(ws_stream),
         Err(e) => {
             eprintln!("Error: {:?}", e);
             Err(e.to_string())
@@ -18,10 +18,14 @@ async fn handle_connection(raw_stream: TcpStream) -> Result<(SinkSend, SinkRes),
     }
 }
 pub(super) async fn connect_to_server(raw_stream: TcpStream) -> Result<(), String> {
-    let (mut send, mut res) = handle_connection(raw_stream).await?;
-    let _ = send.send(Message::Text("Welcome to the server please add your name".into())).await;
+    let mut ws_stream = handle_connection(raw_stream).await?;
+    let _ = ws_stream
+        .send(Message::Text(
+            "Welcome to the server please add your name".into(),
+        ))
+        .await;
 
-    if let Some(Ok(Message::Binary(rpc))) = res.next().await {
+    if let Some(Ok(Message::Binary(rpc))) = ws_stream.next().await {
         if let RPC::AddUsername(username) = RPC::decode(rpc.as_slice()).unwrap() {
             let (files, emty_dirs) = API.get_file_maps().await;
             let rpc = RPC::ResConnect {
@@ -30,18 +34,24 @@ pub(super) async fn connect_to_server(raw_stream: TcpStream) -> Result<(), Strin
                 emty_dirs,
                 priviledge: Priviledge::ReadWrite,
             };
-            let _ = send.send(Message::binary(rpc.encode().unwrap())).await;
+            let _ = ws_stream.send(Message::binary(rpc.encode().unwrap())).await;
             let mut clients_res = CLIENTS_RES.lock().await;
             let mut clients_send = CLIENTS_SEND.lock().await;
-            clients_send.insert(username.clone(), Arc::new(Mutex::new(send)));
-            clients_res.insert(
-                username.clone(),
-                Arc::new(Mutex::new(ClientRes {
-                    priviledge: Priviledge::ReadWrite,
-                    resever: res,
-                    open: true,
-                })),
-            );
+
+            let (send, res) = ws_stream.split();
+            let send = Arc::new(Mutex::new(send));
+            let client_res = Arc::new(Mutex::new(ClientRes {
+                priviledge: Priviledge::ReadWrite,
+                resever: res,
+                open: true,
+            }));
+            clients_send.insert(username.clone(), send.clone());
+            clients_res.insert(username, client_res.clone());
+            // drop(ws_stream);
+            // drop(res);
+            // drop(send);
+            drop(clients_res);
+            drop(clients_send);
             return Ok(());
         }
     }
@@ -51,12 +61,11 @@ pub(crate) async fn remove_dead_clients() {
     let mut clients_res = CLIENTS_RES.lock().await;
     let mut clients_send = CLIENTS_SEND.lock().await;
     for (username, client) in clients_res.iter() {
-            if !client.lock().await.open {
-                println!("Client with username: {} has disconnected", username);
-                clients_send.remove(username);
-            }
+        if !client.lock().await.open {
+            println!("Client with username: {} has disconnected", username);
             clients_send.remove(username);
-    };
+        }
+    }
     clients_res.retain(|username, _client| clients_send.contains_key(username));
 }
 
