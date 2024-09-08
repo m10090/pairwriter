@@ -1,5 +1,5 @@
 use super::*;
-use automerge::{ReadDoc as _, ScalarValue, Value, ROOT};
+use automerge::{ObjType, ReadDoc as _, ScalarValue, Value, ROOT};
 use std::io;
 use std::io::Result as Res;
 impl FileTree {
@@ -39,11 +39,17 @@ impl FileTree {
             match file.get(ROOT, "content") {
                 Ok(content) => {
                     let (val, id) = content.unwrap();
-                    if val.is_str() {
+                    if val.is_object() && matches!(val,Value::Object(ObjType::Text))  {
                         Ok(file.text(id).unwrap().as_bytes().to_vec())
-                    } else {
-                        // Ok(val.to_bytes().unwrap().to_vec()) // there is some issue there
-                        Ok(vec![])
+                    } else if val.is_bytes() {
+                        Ok(val.to_bytes().unwrap().to_vec()) // there is some issue there
+                        // Ok(vec![])
+                    }
+                    else {
+                        Err(Error::new(
+                            io::ErrorKind::InvalidData,
+                            "The file could be corrupted",
+                        ))
                     }
                 }
                 Err(_) => Err(Error::new(
