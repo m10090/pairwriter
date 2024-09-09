@@ -76,7 +76,7 @@ impl ServerApi {
     ) -> Result<Message, ()> {
         let mut file = self.file_tree.lock().await;
         let result = file.handle_msg(rpc.clone(), Some(client), username).await?; //todo
-        let _ = self.sender.lock().await.send(rpc);
+        // let _ = self.sender.lock().await.send(rpc);
         Ok(result)
     }
 

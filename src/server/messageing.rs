@@ -6,7 +6,7 @@ use super::*;
 async fn broadcast_message(msg: Message) -> Result<(), String> {
     if no_client_connected().await {
         use tokio::time::{sleep, Duration};
-        sleep(Duration::from_millis(200)).await;
+        sleep(Duration::from_millis(1000)).await;
         return Err("No clients connected".to_string());
     }
     let clients_send = CLIENTS_SEND.lock().await;
@@ -15,7 +15,7 @@ async fn broadcast_message(msg: Message) -> Result<(), String> {
         let client = client.clone();
         let msg = msg.clone();
         futures.push(async move { 
-            client.lock().await.feed(msg).await
+            client.lock().await.send(msg).await
         });
     }
     // drop(clients_send);// freeing the client send
@@ -47,7 +47,7 @@ async fn handle_message() -> Result<Message, String> {
                 .map_err(|_| "error reading the message".to_string())
         }));
     }
-    // this will return the frist message it gets
+    // this will return the first message it gets
     let res = match select_ok(futrs).await {
         Ok((message, _)) => Ok(message),
         Err(e) => Err(e),
@@ -55,6 +55,7 @@ async fn handle_message() -> Result<Message, String> {
 
     if res.is_err() {
         // could be all clients are closed
+        println!("Error reading message: {:?}", res);
         connection::remove_dead_clients().await;
         return Err("all clients are closed".to_string());
     }
@@ -71,6 +72,9 @@ pub(crate) async fn handle_messages() -> ! {
                 client_message = handle_message() => client_message?,
                 Some(server_message) = rx.recv() => server_message ,
             };
+            if message.is_empty() {
+                return Ok::<(), String>(());
+            }
             broadcast_message(message).await?;
             Ok::<(), String>(())
         }

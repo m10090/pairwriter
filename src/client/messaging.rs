@@ -24,6 +24,10 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
     async move {
         while let Some(message) = reader.next().await {
             let message = message.expect("Failed to get message"); // todo: handle error
+            if message.is_empty() {
+                println!("Empty message");
+                continue;
+            }
             if let Message::Binary(ref message) = message {
                 let rpc = RPC::decode(message.as_slice()).expect("Failed to decode message");
                 if let RPC::ResConnect {
@@ -37,9 +41,9 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
                         .unwrap();
                 }
             }
-            dbg!(&message);
             #[cfg(feature = "integration_testing_client")]
             {
+                dbg!(&message);
                 tokio::spawn(crate::integration_testing::reseived_message(
                     message.clone(),
                 ));

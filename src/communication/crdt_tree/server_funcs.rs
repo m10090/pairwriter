@@ -385,14 +385,12 @@ impl PrivateServerFn for FileTree {
 
     fn get_automerge(&mut self, path: &String) -> Res<Vec<u8>> {
         if self.files.binary_search(path).is_err() {
-            Err(Error::new(io::ErrorKind::NotFound, "file is or not found"))
+            Err(Error::new(io::ErrorKind::NotFound, "file is not found"))
         } else if let Some(file) = self.tree.get(path) {
             Ok(file.save())
         } else {
-            Err(Error::new(
-                io::ErrorKind::NotConnected,
-                "file is not opened or not found",
-            )) // this should be an error as the file is not opened
+            let _ = PrivateServerFn::open_file(self, path.clone());
+            self.get_automerge(path)
         }
     }
 }
@@ -499,7 +497,7 @@ impl PubServerFn for FileTree {
             RPC::CreateFile { path } => {
                 self.create_file(path.clone()).map_err(Self::err_msg)?;
                 let rpc = RPC::CreateFile { path };
-                Ok(rpc.encode().map_err(Self::err_msg)?)
+                Ok(rpc.encode().unwrap())
             }
 
             RPC::CreateDirectory { path } => {
@@ -567,12 +565,12 @@ impl PubServerFn for FileTree {
                     client
                         .lock()
                         .await
-                        .feed(rpc.encode().map_err(Self::err_msg)?)
-                        .await;
-               } // this should be an error
+                        .send(rpc.encode().map_err(Self::err_msg)?)
+                        .await
+                        .map_err(Self::err_msg)?;
+                } // this should be an error
 
-
-                Ok(Message::Ping(vec![])) // this mean that reset the message awaiting
+                Ok(Message::Binary(vec![])) // this mean that reset the message awaiting
             }
 
             RPC::ReqBufferTree { .. } => {
