@@ -22,7 +22,7 @@ trait PrivateClientFn {
     /// make a new directory in the tree
     fn make_dir(&mut self, path: String) -> Res<()>; // EMTY_DIRS_OP
 
-    fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()>;
+    fn edit_buf(&mut self, path: String, changes: &[u8]) -> Res<()>;
 }
 
 pub trait PubClientFn: PrivateClientFn {
@@ -274,12 +274,12 @@ impl PrivateClientFn for FileTree {
 
         Ok(())
     }
-    fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()> {
+    fn edit_buf(&mut self, path: String, changes: &[u8]) -> Res<()> {
         if self.files.binary_search(&path).is_err() {
             return Err(Error::new(io::ErrorKind::NotFound, "File Not Found"));
         }
         if let Some(file) = self.tree.get_mut(&path) {
-            file.apply_changes(changes)
+            file.load_incremental(changes)
                 .map_err(Self::err_msg)
                 .map_err(|_| Error::new(io::ErrorKind::InvalidData, "Can't merge"))?;
         }
@@ -347,17 +347,7 @@ impl PubClientFn for FileTree {
                 todo!() // should call the api of user
             }
             RPC::EditBuffer { path, changes } => {
-                if let Some(file) = self.tree.get_mut(&path) {
-                    use automerge::Change;
-                    let changes = changes
-                        .into_iter()
-                        .map(|c| Change::from_bytes(c).unwrap())
-                        .collect::<Vec<Change>>();
-                    file.apply_changes(changes)
-                        .map_err(Self::err_msg)
-                        .map_err(|_| Error::new(io::ErrorKind::InvalidData, "Can't merge"))
-                        .unwrap_or_else(|e| eprintln!("{}", e));
-                }
+                self.edit_buf(path, changes.as_ref()).unwrap_or_else(|e| eprintln!("{}", e));
             }
             RPC::CreateFile { path } => {
                 self.create_file(path)
@@ -382,7 +372,7 @@ impl PubClientFn for FileTree {
             }
             RPC::FileSaved { .. } => {
                 eprintln!("Invalid RPC");
-            }, // should call the api to remove the dirty
+            } // should call the api to remove the dirty
             // bit
             RPC::ResSendFile { path, file } => {
                 self.tree

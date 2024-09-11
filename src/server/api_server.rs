@@ -6,8 +6,9 @@ use super::{CLIENTS_RES, CLIENTS_SEND};
 use crate::communication::crdt_tree::FileTree;
 use crate::communication::{crdt_tree::server_funcs::PubServerFn as _, rpc::RPC};
 use crate::server::messageing::server_send_message;
+use automerge::patches::TextRepresentation;
 use automerge::transaction::Transactable;
-use automerge::{ReadDoc as _, ROOT};
+use automerge::{ReadDoc, ROOT};
 use futures::SinkExt;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio::sync::{Mutex, Semaphore};
@@ -52,6 +53,7 @@ impl ServerApi {
         let map = &mut self.file_tree.lock().await.tree;
         let file = map.get_mut(&path).unwrap();
         let obj_id = file.get(ROOT, "content").unwrap().unwrap().1; // to do
+        let old_heads = file.get_heads();
         {
             let mut tx = file.transaction();
             if pos.is_none() && del.is_none() {
@@ -61,9 +63,7 @@ impl ServerApi {
             }
             tx.commit();
         }
-        let change = file.get_last_local_change().unwrap();
-        let change_in_bytes = change.raw_bytes().to_vec();
-        let changes = vec![change_in_bytes];
+        let changes = file.save_after(old_heads.as_slice());
         let rpc = RPC::EditBuffer { path, changes };
         server_send_message(rpc.encode().unwrap()).await;
     }
@@ -76,7 +76,7 @@ impl ServerApi {
     ) -> Result<Message, ()> {
         let mut file = self.file_tree.lock().await;
         let result = file.handle_msg(rpc.clone(), Some(client), username).await?; //todo
-        // let _ = self.sender.lock().await.send(rpc);
+        let _ = self.sender.lock().await.send(rpc);
         Ok(result)
     }
 

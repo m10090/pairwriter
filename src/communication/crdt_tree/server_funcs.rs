@@ -27,7 +27,7 @@ trait PrivateServerFn {
     fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()>; // dir operation
     fn rm_dir(&mut self, path: String) -> Res<()>;
     fn make_dir(&mut self, path: String) -> Res<()>;
-    fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()>;
+    fn edit_buf(&mut self, path: String, changes: &[u8]) -> Res<()>;
 
     fn save_buf(&mut self, path: String) -> Res<()>;
     fn get_automerge(&mut self, path: &String) -> Res<Vec<u8>>;
@@ -365,13 +365,13 @@ impl PrivateServerFn for FileTree {
         }
     }
 
-    fn edit_buf(&mut self, path: String, changes: Vec<automerge::Change>) -> Res<()> {
+    fn edit_buf(&mut self, path: String, changes: &[u8]) -> Res<()> {
         // here error should be sent but in the case of client there shouldn't be any erros
         if self.files.binary_search(&path).is_err() {
             return Err(Error::new(io::ErrorKind::NotFound, "File Not Found"));
         }
         if let Some(file) = self.tree.get_mut(&path) {
-            file.apply_changes(changes)
+            file.load_incremental(changes)
                 .map_err(Self::err_msg)
                 .map_err(|_| Error::new(io::ErrorKind::InvalidData, "Can't merge"))?;
             Ok(())
@@ -456,12 +456,7 @@ impl PubServerFn for FileTree {
             }
 
             RPC::EditBuffer { path, changes } => {
-                let changes_arr = changes
-                    .clone()
-                    .into_iter()
-                    .map(|x: Vec<u8>| automerge::Change::from_bytes(x).map_err(Self::err_msg))
-                    .collect::<Result<Vec<automerge::Change>, _>>()?;
-                self.edit_buf(path.clone(), changes_arr)
+                self.edit_buf(path.clone(), changes.as_ref())
                     .map_err(Self::err_msg)?;
                 let rpc = RPC::EditBuffer { path, changes };
                 Ok(rpc.encode().map_err(Self::err_msg)?)

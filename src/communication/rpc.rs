@@ -34,7 +34,7 @@ pub enum RPC {
     },
     EditBuffer {
         path: String,
-        changes: Vec<Vec<u8>>,
+        changes: Vec<u8>,
     },
     ReqMoveCursor {
         path: String,

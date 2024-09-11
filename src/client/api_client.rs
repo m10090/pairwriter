@@ -6,7 +6,7 @@ use crate::{
     },
     server::connection::Priviledge,
 };
-use automerge::{transaction::Transactable, ReadDoc, ROOT};
+use automerge::{sync, transaction::Transactable, PatchLog, ReadDoc, ROOT};
 use std::io;
 use tokio_tungstenite::tungstenite::Message;
 
@@ -66,6 +66,7 @@ impl ClientApi {
         let map = &mut self.file_tree.tree;
         let file = map.get_mut(&path).unwrap();
         let obj_id = file.get(ROOT, "content").unwrap().unwrap().1; // to do
+        let old_heads = file.get_heads();
         {
             let mut tx = file.transaction();
             if pos.is_none() && del.is_none() {
@@ -75,9 +76,8 @@ impl ClientApi {
             }
             tx.commit();
         }
-        let change = file.get_last_local_change().unwrap();
-        let change_in_bytes = change.raw_bytes().to_vec();
-        let changes = vec![change_in_bytes];
+
+        let changes = file.save_after(old_heads.as_slice());
 
         let rpc = RPC::EditBuffer { path, changes }; // this is safe because this operation is idiempotent
         let _ = client_send_message(rpc.encode().unwrap()).await;
