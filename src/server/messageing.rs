@@ -26,7 +26,7 @@ async fn broadcast_message(msg: Message) -> Result<(), String> {
     Ok(())
 }
 async fn handle_message() -> Result<Message, String> {
-    let mut client_res = CLIENTS_RES.lock().await;
+    let client_res = CLIENTS_RES.lock().await;
     let mut futrs = Vec::with_capacity(client_res.len());
     if client_res.is_empty() {
         drop(client_res); // free the lock
@@ -37,7 +37,7 @@ async fn handle_message() -> Result<Message, String> {
         return Err("No clients connected".to_string());
     }
     // read message from all clients
-    for (username, client) in client_res.iter_mut() {
+    for (username, client) in client_res.iter() {
         let client = client.clone();
         futrs.push(Box::pin(async move {
             let priviledge = client.lock().await.priviledge;
@@ -53,6 +53,7 @@ async fn handle_message() -> Result<Message, String> {
         Err(e) => Err(e),
     };
 
+    drop(client_res); //free the lock to 
     if res.is_err() {
         // could be all clients are closed
         println!("Error reading message: {:?}", res);
