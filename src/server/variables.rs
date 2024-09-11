@@ -7,7 +7,7 @@ use std::sync::{Arc, OnceLock};
 use tokio::net::TcpStream;
 
 lazy_static! {
-    pub static ref API: ServerApi = ServerApi::new_server();
+    pub static ref API: Mutex<ServerApi> = Mutex::new(ServerApi::new_server());
 }
 
 lazy_static! {

@@ -21,13 +21,15 @@ pub(super) async fn connect_to_server(raw_stream: TcpStream) -> Result<(), Strin
     let mut ws_stream = handle_connection(raw_stream).await?;
     if let Some(Ok(Message::Binary(rpc))) = ws_stream.next().await {
         if let RPC::AddUsername(username) = RPC::decode(rpc.as_slice()).unwrap() {
-            let (files, emty_dirs) = API.get_file_maps().await;
+            let api = API.lock().await;
+            let (files, emty_dirs) = api.get_file_maps().await;
             let rpc = RPC::ResConnect {
                 username: "Server".to_string(),
-                files,
-                emty_dirs,
+                files:files.clone(),
+                emty_dirs: emty_dirs.clone(),
                 priviledge: Priviledge::ReadWrite,
             };
+            drop(api);
             let _ = ws_stream.send(Message::binary(rpc.encode().unwrap())).await;
 
             let (send, res) = ws_stream.split();

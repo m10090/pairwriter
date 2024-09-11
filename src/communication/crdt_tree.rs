@@ -65,8 +65,8 @@ impl FileTree {
     }
     /// build the tree from the files and emty_dirs
     /// returns the files and emty_dirs
-    pub(crate) fn get_maps(&self) -> (Vec<String>, Vec<String>) {
-        (self.files.clone(), self.emty_dirs.clone())
+    pub(crate) fn get_maps(&self) -> (&Vec<String>, &Vec<String>) {
+        (&self.files, &self.emty_dirs)
     }
 }
 pub(crate) mod buf_func;

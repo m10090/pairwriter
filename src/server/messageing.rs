@@ -14,9 +14,7 @@ async fn broadcast_message(msg: Message) -> Result<(), String> {
     for (_, client) in clients_send.iter() {
         let client = client.clone();
         let msg = msg.clone();
-        futures.push(async move { 
-            client.lock().await.send(msg).await
-        });
+        futures.push(async move { client.lock().await.send(msg).await });
     }
     // drop(clients_send);// freeing the client send
     let futures = futures::future::join_all(futures).await;
@@ -42,7 +40,9 @@ async fn handle_message() -> Result<Message, String> {
         futrs.push(Box::pin(async move {
             let priviledge = client.lock().await.priviledge;
             let rpc = client.lock().await.read_message().await?;
-            API.read_rpc(rpc, priviledge, username)
+            API.lock()
+                .await
+                .read_rpc(rpc, priviledge, username)
                 .await
                 .map_err(|_| "error reading the message".to_string())
         }));
@@ -53,7 +53,7 @@ async fn handle_message() -> Result<Message, String> {
         Err(e) => Err(e),
     };
 
-    drop(client_res); //free the lock to 
+    drop(client_res); //free the lock to
     if res.is_err() {
         // could be all clients are closed
         println!("Error reading message: {:?}", res);

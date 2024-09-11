@@ -16,23 +16,23 @@ use tokio_tungstenite::tungstenite::Message;
 
 #[derive(Debug)]
 pub struct ServerApi {
-    file_tree: Mutex<FileTree>,
-    sender: Mutex<UnboundedSender<RPC>>,
-    receiver: Mutex<UnboundedReceiver<RPC>>,
+    file_tree: FileTree,
+    sender: UnboundedSender<RPC>,
+    pub receiver: Mutex<UnboundedReceiver<RPC>>,
 }
 
 impl ServerApi {
     pub(crate) fn new_server() -> Self {
         let (sender, receiver) = unbounded_channel();
         Self {
-            file_tree: Mutex::new(FileTree::build_file_tree()),
-            sender: Mutex::new(sender),
+            file_tree: FileTree::build_file_tree(),
+            sender: sender,
             receiver: Mutex::new(receiver),
         }
     }
 
-    pub async fn read_file_server(&self, path: String) -> io::Result<Vec<u8>> {
-        let mut file = self.file_tree.lock().await;
+    pub async fn read_file_server(&mut self, path: String) -> io::Result<Vec<u8>> {
+        let file = &mut self.file_tree;
         let res_buf = file.read_buf(&path);
         match res_buf {
             Ok(buf) => Ok(buf),
@@ -49,8 +49,8 @@ impl ServerApi {
     /// if del and text is None, then it is an total update operation
     /// if one of them is None, then it does nothing
     /// else it is a splice operation
-    pub async fn edit_buf(&self, path: String, pos: Option<usize>, del: Option<isize>, text: &str) {
-        let map = &mut self.file_tree.lock().await.tree;
+    pub async fn edit_buf(&mut self, path: String, pos: Option<usize>, del: Option<isize>, text: &str) {
+        let map = &mut (&mut self.file_tree).tree;
         let file = map.get_mut(&path).unwrap();
         let obj_id = file.get(ROOT, "content").unwrap().unwrap().1; // to do
         let old_heads = file.get_heads();
@@ -69,24 +69,19 @@ impl ServerApi {
     }
 
     pub(super) async fn read_rpc(
-        &self,
+        &mut self,
         rpc: RPC,
         client: Priviledge,
         username: &String,
     ) -> Result<Message, ()> {
-        let mut file = self.file_tree.lock().await;
+        let file = &mut self.file_tree;
         let result = file.handle_msg(rpc.clone(), Some(client), username).await?; //todo
-        let _ = self.sender.lock().await.send(rpc);
+        let _ = self.sender.send(rpc);
         Ok(result)
     }
 
-    pub async fn queue_pop(&self) -> Option<RPC> {
-        self.receiver.lock().await.recv().await
-    }
 
-    pub async fn get_file_maps(&self) -> (Vec<String>, Vec<String>) {
-        self.file_tree.lock().await.get_maps()
-    }
+
 
     // pub async fn close_connection(&self, username: &String) -> Result<(), String> {
     //     let mut queue = CLIENTS_RES.lock().await;
@@ -121,15 +116,16 @@ impl ServerApi {
         }
     }
 
-    pub async fn send_rpc(&self, rpc: RPC) {
+    pub async fn send_rpc(&mut self, rpc: RPC) {
         if let Ok(x) = self
             .file_tree
-            .lock()
-            .await
             .handle_msg(rpc.clone(), None, &"".to_string())
             .await
         {
             server_send_message(x).await;
         }
+    }
+    pub async fn get_file_maps(&self) -> (&Vec<String>, &Vec<String>) {
+        self.file_tree.get_maps()
     }
 }

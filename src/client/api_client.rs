@@ -82,7 +82,7 @@ impl ClientApi {
         let rpc = RPC::EditBuffer { path, changes }; // this is safe because this operation is idiempotent
         let _ = client_send_message(rpc.encode().unwrap()).await;
     }
-    pub async fn get_file_maps(&mut self) -> (Vec<String>, Vec<String>) {
+    pub async fn get_file_maps(&mut self) -> (&Vec<String>, &Vec<String>) {
         self.file_tree.get_maps()
     }
 }
