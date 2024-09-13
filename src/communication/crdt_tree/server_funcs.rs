@@ -385,7 +385,7 @@ impl PrivateServerFn for FileTree {
 
     fn get_automerge(&mut self, path: &String) -> Res<Vec<u8>> {
         if self.files.binary_search(path).is_err() {
-            Err(Error::new(io::ErrorKind::NotFound, "file is not found"))
+            Err(Error::new(io::ErrorKind::NotFound, format!("file is not found {path}")))
         } else if let Some(file) = self.tree.get(path) {
             Ok(file.save())
         } else {
