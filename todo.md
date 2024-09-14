@@ -1,14 +1,16 @@
 - [ ] improve rpc protocol
 - [ ] improve communication
-- [ ] write better integration test
-- [ ] refactor integration test
+- [x] write better integration test
+- [x] refactor integration test
 - [ ] write client test
 - [ ] add error enum
 - [ ] take in care client duplecated username
-- [ ] alow client to change (his/her) privilege
+- [ ] allow client to change (his/her) privilege
 - [ ] code generation for private functions 
 - [ ] ignore some files and directores
 - [ ] split RPC
-- [ ] await in server queue without issue
+- [x] await in server queue without issue
 - [ ] split the client hashmap to 2 streams
 - [ ] rewrite the integration tests
+- [ ] stop integration test when panic in a thread
+- [ ] watch file changes 

@@ -323,20 +323,6 @@ impl PubClientFn for FileTree {
         }
     }
     fn handle_msg(&mut self, tx: RPC) {
-        let message = match tx {
-            Message::Binary(msg) => msg,
-            _ => {
-                eprintln!("Invalid Message");
-                return;
-            }
-        };
-        let rpc = match RPC::decode(&message) {
-            Ok(r) => r,
-            Err(_) => {
-                eprintln!("Invalid RPC");
-                return;
-            }
-        };
         match rpc {
             RPC::ResMark {
                 path,

@@ -10,24 +10,23 @@ use automerge::{sync, transaction::Transactable, PatchLog, ReadDoc, ROOT};
 use std::io;
 use tokio_tungstenite::tungstenite::Message;
 
-use tokio::sync::{mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender}, Mutex};
+use tokio::sync::{
+    mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
+    Mutex,
+};
 
 type Res<T> = io::Result<T>;
 
 #[derive(Debug)]
 pub struct ClientApi {
     file_tree: FileTree,
-    priviledge: Priviledge,
+    pub priviledge: Priviledge,
     sender: UnboundedSender<RPC>,
     receiver: Mutex<UnboundedReceiver<RPC>>,
 }
 
 impl ClientApi {
-    pub(crate) fn new(
-        files: Vec<String>,
-        emty_dirs: Vec<String>,
-        priviledge: Priviledge,
-    ) -> Self {
+    pub(crate) fn new(files: Vec<String>, emty_dirs: Vec<String>, priviledge: Priviledge) -> Self {
         let (sender, receiver) = unbounded_channel();
         let receiver = Mutex::new(receiver);
         Self {
@@ -73,7 +72,13 @@ impl ClientApi {
         }
         let _ = client_send_message(rpc.encode().unwrap()).await; // this to stop message fluding
     }
-    pub async fn edit_buf(&mut self, path: String, pos: Option<usize>, del: Option<isize>, text: &str) {
+    pub async fn edit_buf(
+        &mut self,
+        path: String,
+        pos: Option<usize>,
+        del: Option<isize>,
+        text: &str,
+    ) {
         if self.priviledge == Priviledge::ReadOnly {
             return;
         }
