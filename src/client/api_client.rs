@@ -22,7 +22,7 @@ pub struct ClientApi {
     file_tree: FileTree,
     pub priviledge: Priviledge,
     sender: UnboundedSender<RPC>,
-    receiver: Mutex<UnboundedReceiver<RPC>>,
+    pub receiver: Mutex<UnboundedReceiver<RPC>>,
 }
 
 impl ClientApi {

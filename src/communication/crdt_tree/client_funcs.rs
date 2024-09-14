@@ -322,7 +322,7 @@ impl PubClientFn for FileTree {
             tree: HashMap::new(),
         }
     }
-    fn handle_msg(&mut self, tx: RPC) {
+    fn handle_msg(&mut self, rpc: RPC) {
         match rpc {
             RPC::ResMark {
                 path,

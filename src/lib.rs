@@ -15,3 +15,12 @@ pub mod prelude {
     pub use super::server::variables::API as server_api;
     pub use super::server::connection::Priviledge;
 }
+
+
+pub mod server_import {
+    pub use super::prelude::{server_api, start_server, ServerApi, Priviledge};
+}
+
+pub mod client_import {
+    pub use super::prelude::{client_api, connect_as_client, ClientApi , Priviledge};
+}
