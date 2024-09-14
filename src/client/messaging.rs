@@ -24,10 +24,6 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
     async move {
         while let Some(message) = reader.next().await {
             let message = message.expect("Failed to get message"); // todo: handle error
-            if message.is_empty() {
-                println!("Empty message");
-                continue;
-            }
             if let Message::Binary(ref message) = message {
                 let rpc = RPC::decode(message.as_slice()).expect("Failed to decode message");
                 if let RPC::ResConnect {
@@ -39,6 +35,11 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
                 {
                     API.set(Mutex::new(ClientApi::new(files, emty_dirs, priviledge)))
                         .unwrap();
+                } else {
+                    match API.get() {
+                        Some(api) => api.lock().await.read_tx(rpc).await,
+                        None => println!("API not initialized"),
+                    };
                 }
             }
             #[cfg(feature = "integration_testing_client")]
@@ -48,10 +49,6 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
                     message.clone(),
                 ));
             }
-            match API.get() {
-                Some(api) => api.lock().await.read_tx(message).await,
-                None => println!("API not initialized"),
-            };
 
             // todo!("Handle message: {:?}", message);
         }

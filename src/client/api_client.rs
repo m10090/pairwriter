@@ -10,12 +10,16 @@ use automerge::{sync, transaction::Transactable, PatchLog, ReadDoc, ROOT};
 use std::io;
 use tokio_tungstenite::tungstenite::Message;
 
+use tokio::sync::{mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender}, Mutex};
+
 type Res<T> = io::Result<T>;
 
 #[derive(Debug)]
 pub struct ClientApi {
     file_tree: FileTree,
     priviledge: Priviledge,
+    sender: UnboundedSender<RPC>,
+    receiver: Mutex<UnboundedReceiver<RPC>>,
 }
 
 impl ClientApi {
@@ -24,9 +28,13 @@ impl ClientApi {
         emty_dirs: Vec<String>,
         priviledge: Priviledge,
     ) -> Self {
+        let (sender, receiver) = unbounded_channel();
+        let receiver = Mutex::new(receiver);
         Self {
             file_tree: FileTree::build_tree(files, emty_dirs),
             priviledge,
+            sender,
+            receiver,
         }
     }
 
@@ -49,9 +57,14 @@ impl ClientApi {
         Ok(file)
     }
 
-    pub async fn read_tx(&mut self, msg: Message) {
+    pub async fn queue_pop(&self) -> Option<RPC> {
+        self.receiver.lock().await.recv().await
+    }
+
+    pub async fn read_tx(&mut self, rpc: RPC) {
         let file_tree = &mut self.file_tree;
-        file_tree.handle_msg(msg);
+        file_tree.handle_msg(rpc.clone());
+        self.sender.send(rpc);
     }
 
     pub async fn send_rpc(&mut self, rpc: RPC) {

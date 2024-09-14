@@ -27,7 +27,7 @@ trait PrivateClientFn {
 
 pub trait PubClientFn: PrivateClientFn {
     fn build_tree(files: Vec<String>, emty_dirs: Vec<String>) -> Self;
-    fn handle_msg(&mut self, tx: Message);
+    fn handle_msg(&mut self, tx: RPC);
 }
 
 impl PrivateClientFn for FileTree {
@@ -322,7 +322,7 @@ impl PubClientFn for FileTree {
             tree: HashMap::new(),
         }
     }
-    fn handle_msg(&mut self, tx: Message) {
+    fn handle_msg(&mut self, tx: RPC) {
         let message = match tx {
             Message::Binary(msg) => msg,
             _ => {
