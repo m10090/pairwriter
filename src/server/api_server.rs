@@ -18,7 +18,7 @@ use tokio_tungstenite::tungstenite::Message;
 pub struct ServerApi {
     file_tree: FileTree,
     sender: UnboundedSender<RPC>,
-    pub receiver: Mutex<UnboundedReceiver<RPC>>,
+    pub receiver: Option<UnboundedReceiver<RPC>>,
 }
 
 impl ServerApi {
@@ -26,8 +26,8 @@ impl ServerApi {
         let (sender, receiver) = unbounded_channel();
         Self {
             file_tree: FileTree::build_file_tree(),
-            sender: sender,
-            receiver: Mutex::new(receiver),
+            sender,
+            receiver: Some(receiver),
         }
     }
 
@@ -80,6 +80,9 @@ impl ServerApi {
         Ok(result)
     }
 
+    pub (super ) async fn task_receiver(&mut self) -> UnboundedReceiver<RPC> {
+        self.receiver.take().unwrap()
+    }
 
 
 
@@ -125,7 +128,9 @@ impl ServerApi {
             server_send_message(x).await;
         }
     }
+    
     pub async fn get_file_maps(&self) -> (&Vec<String>, &Vec<String>) {
         self.file_tree.get_maps()
     }
+
 }

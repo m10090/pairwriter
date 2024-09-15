@@ -565,6 +565,7 @@ impl PubServerFn for FileTree {
                         .map_err(Self::err_msg)?;
                 } // this should be an error
 
+                drop(clients_send);
                 Ok(Message::Binary(vec![])) // this mean that reset the message awaiting
             }
 

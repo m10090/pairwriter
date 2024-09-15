@@ -37,23 +37,24 @@ async fn handle_message() -> Result<Message, String> {
     // read message from all clients
     for (username, client) in client_res.iter() {
         let client = client.clone();
+        let username = username.clone();
         futrs.push(Box::pin(async move {
             let priviledge = client.lock().await.priviledge;
             let rpc = client.lock().await.read_message().await?;
             API.lock()
                 .await
-                .read_rpc(rpc, priviledge, username)
+                .read_rpc(rpc, priviledge, &username)
                 .await
                 .map_err(|_| "error reading the message".to_string())
         }));
     }
+    drop(client_res); //free the lock to
     // this will return the first message it gets
     let res = match select_ok(futrs).await {
         Ok((message, _)) => Ok(message),
         Err(e) => Err(e),
     };
 
-    drop(client_res); //free the lock to
     if res.is_err() {
         // could be all clients are closed
         println!("Error reading message: {:?}", res);
@@ -74,7 +75,7 @@ pub(crate) async fn handle_messages() -> ! {
                 Some(server_message) = rx.recv() => server_message ,
             };
             if message.is_empty() {
-                return Ok::<(), String>(());
+                return Ok(());
             }
             broadcast_message(message).await?;
             Ok::<(), String>(())

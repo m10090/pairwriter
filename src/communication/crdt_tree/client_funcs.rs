@@ -283,7 +283,7 @@ impl PrivateClientFn for FileTree {
                 .map_err(Self::err_msg)
                 .map_err(|_| Error::new(io::ErrorKind::InvalidData, "Can't merge"))?;
         }
-        Ok(()) // here there is no error that is not the case in server
+        Ok(()) // here there is no error that is not the case in client
     }
     fn rm_file(&mut self, path: String) -> Res<()> {
         let files = &mut self.files;

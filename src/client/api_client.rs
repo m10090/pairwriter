@@ -22,19 +22,23 @@ pub struct ClientApi {
     file_tree: FileTree,
     pub priviledge: Priviledge,
     sender: UnboundedSender<RPC>,
-    pub receiver: Mutex<UnboundedReceiver<RPC>>,
+    pub receiver: Option<UnboundedReceiver<RPC>>,
 }
 
 impl ClientApi {
     pub(crate) fn new(files: Vec<String>, emty_dirs: Vec<String>, priviledge: Priviledge) -> Self {
         let (sender, receiver) = unbounded_channel();
-        let receiver = Mutex::new(receiver);
+        let receiver = Some(receiver);
         Self {
             file_tree: FileTree::build_tree(files, emty_dirs),
             priviledge,
             sender,
             receiver,
         }
+    }
+
+    pub fn get_receiver(&mut self) -> Option<UnboundedReceiver<RPC>> {
+        self.receiver.take()
     }
 
     pub async fn read_file(&mut self, path: String) -> Res<Vec<u8>> {
@@ -56,14 +60,11 @@ impl ClientApi {
         Ok(file)
     }
 
-    pub async fn queue_pop(&self) -> Option<RPC> {
-        self.receiver.lock().await.recv().await
-    }
 
     pub async fn read_tx(&mut self, rpc: RPC) {
         let file_tree = &mut self.file_tree;
         file_tree.handle_msg(rpc.clone());
-        self.sender.send(rpc);
+        let _ = self.sender.send(rpc);
     }
 
     pub async fn send_rpc(&mut self, rpc: RPC) {

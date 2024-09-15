@@ -25,6 +25,13 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
         while let Some(message) = reader.next().await {
             let message = message.expect("Failed to get message"); // todo: handle error
             if let Message::Binary(ref message) = message {
+                #[cfg(feature = "integration_testing_client")]
+                {
+                    dbg!(&message);
+                    tokio::spawn(crate::integration_testing::reseived_message(
+                        Message::binary(message.clone()),
+                    ));
+                }
                 let rpc = RPC::decode(message.as_slice()).expect("Failed to decode message");
                 if let RPC::ResConnect {
                     username: _username,
@@ -42,15 +49,6 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
                     };
                 }
             }
-            #[cfg(feature = "integration_testing_client")]
-            {
-                dbg!(&message);
-                tokio::spawn(crate::integration_testing::reseived_message(
-                    message.clone(),
-                ));
-            }
-
-            // todo!("Handle message: {:?}", message);
         }
     }
 }
