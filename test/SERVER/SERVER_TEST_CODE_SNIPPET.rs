@@ -14,7 +14,7 @@ pub async fn run_test(){
     let rpc = RPC::CreateFile { path: "./this.c".to_string() };
     let message = rpc.encode();
 
-    crate::server::messageing::server_send_message(message.unwrap()).await;
+    crate::server::messageing::server_send_message(message.unwrap());
     
     println!("Test passed!");
 

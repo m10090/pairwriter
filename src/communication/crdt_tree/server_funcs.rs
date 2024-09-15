@@ -1,4 +1,4 @@
-use crate::server::connection::{ClientRes, Priviledge};
+use crate::server::{connection::{ClientRes, Priviledge}, messageing};
 use automerge::{transaction::Transactable, ROOT};
 use futures::SinkExt as _;
 use std::{
@@ -566,7 +566,7 @@ impl PubServerFn for FileTree {
                 } // this should be an error
 
                 drop(clients_send);
-                Ok(Message::Binary(vec![])) // this mean that reset the message awaiting
+                Ok(messageing::RESET_WAITING) // this mean that reset the message awaiting
             }
 
             RPC::ReqBufferTree { .. } => {

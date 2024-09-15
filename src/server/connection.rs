@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::communication::rpc::RPC;
 use bincode::Decode;
 use futures::stream::StreamExt;
-use messageing::server_send_message;
+use messageing::{server_send_message};
 use tokio::net::TcpStream;
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 
@@ -51,7 +51,7 @@ pub(super) async fn connect_to_server(raw_stream: TcpStream) -> Result<(), Strin
             clients_res.insert(username, client_res.clone());
             drop(clients_res);
 
-            server_send_message(Message::binary(vec![])).await; // that the server should reset the
+            server_send_message(messageing::RESET_WAITING); // that the server should reset the
             // message waiting reading and sending
             return Ok(());
 

@@ -1,6 +1,9 @@
 use futures::future::select_ok;
 
 use super::*;
+
+pub(crate) const RESET_WAITING: Message = Message::Binary(vec![]);
+
 /// This function will broadcast a message to all connected clients
 /// this is public so that it can be used by the server
 async fn broadcast_message(msg: Message) -> Result<(), String> {
@@ -49,7 +52,7 @@ async fn handle_message() -> Result<Message, String> {
         }));
     }
     drop(client_res); //free the lock to
-    // this will return the first message it gets
+                      // this will return the first message it gets
     let res = match select_ok(futrs).await {
         Ok((message, _)) => Ok(message),
         Err(e) => Err(e),
@@ -87,6 +90,6 @@ pub(crate) async fn handle_messages() -> ! {
     }
 }
 
-pub(crate) async fn server_send_message(msg: Message) {
+pub(crate) fn server_send_message(msg: Message) {
     TX.get().unwrap().send(msg).unwrap(); // todo: remove this panic
 }

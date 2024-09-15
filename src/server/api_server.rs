@@ -65,7 +65,7 @@ impl ServerApi {
         }
         let changes = file.save_after(old_heads.as_slice());
         let rpc = RPC::EditBuffer { path, changes };
-        server_send_message(rpc.encode().unwrap()).await;
+        server_send_message(rpc.encode().unwrap());
     }
 
     pub(super) async fn read_rpc(
@@ -125,7 +125,7 @@ impl ServerApi {
             .handle_msg(rpc.clone(), None, &"".to_string())
             .await
         {
-            server_send_message(x).await;
+            server_send_message(x);
         }
     }
     
