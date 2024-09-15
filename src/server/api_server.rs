@@ -80,7 +80,7 @@ impl ServerApi {
         Ok(result)
     }
 
-    pub (super ) async fn task_receiver(&mut self) -> UnboundedReceiver<RPC> {
+    pub (super ) async fn take_receiver(&mut self) -> UnboundedReceiver<RPC> {
         self.receiver.take().unwrap()
     }
 
