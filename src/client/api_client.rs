@@ -54,7 +54,7 @@ impl ClientApi {
                 let msg = rpc.encode().unwrap();
                 let _ = client_send_message(msg).await;
 
-                return Err(io::Error::new(io::ErrorKind::Other, "requesting the file "));
+                return Err(io::Error::new(io::ErrorKind::Other, "requesting the file"));
             }
         };
         Ok(file)

@@ -130,6 +130,10 @@ impl PrivateServerFn for FileTree {
             ));
         }
         let files = &mut self.files;
+        #[cfg(not(test))]
+        {
+            fs::rename(old_path.clone(),new_path.clone())?;
+        }
 
         files.remove(old_index);
         match files.binary_search(&new_path) {
@@ -353,7 +357,7 @@ impl PrivateServerFn for FileTree {
 
     fn save_buf(&mut self, path: String) -> Res<()> {
         if self.files.binary_search(&path).is_err() {
-            Err(Error::new(io::ErrorKind::NotFound, "file is or not found"))
+            Err(Error::new(io::ErrorKind::NotFound, "file is not found"))
         } else if let Some(_file) = self.tree.get(&path) {
             File::create(&path)?.write_all(self.read_buf(&path)?.as_slice())?;
             Ok(())
