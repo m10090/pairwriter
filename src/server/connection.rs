@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::communication::rpc::RPC;
 use bincode::Decode;
 use futures::stream::StreamExt;
-use messageing::{server_send_message};
+use messageing::server_send_message;
 use tokio::net::TcpStream;
 use tokio_tungstenite::{accept_async, tungstenite::Message};
 

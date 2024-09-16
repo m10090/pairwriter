@@ -1,4 +1,5 @@
-use crate::server::{connection::{ClientRes, Priviledge}, messageing};
+#![allow(private_bounds)]
+use crate::server::{connection::Priviledge, messageing};
 use automerge::{transaction::Transactable, ROOT};
 use futures::SinkExt as _;
 use std::{
@@ -30,6 +31,7 @@ trait PrivateServerFn {
     fn edit_buf(&mut self, path: String, changes: &[u8]) -> Res<()>;
 
     fn save_buf(&mut self, path: String) -> Res<()>;
+    #[allow(clippy::ptr_arg)] // this is because of the binary_search
     fn get_automerge(&mut self, path: &String) -> Res<Vec<u8>>;
 }
 
@@ -39,7 +41,7 @@ pub(crate) trait PubServerFn: PrivateServerFn {
         &mut self,
         tx: RPC,
         client: Option<Priviledge>,
-        username: &String,
+        username: &str,
     ) -> Result<Message, ()>;
     fn open_file(&mut self, path: String) -> Res<()>;
 }
@@ -132,7 +134,7 @@ impl PrivateServerFn for FileTree {
         let files = &mut self.files;
         #[cfg(not(test))]
         {
-            fs::rename(old_path.clone(),new_path.clone())?;
+            fs::rename(old_path.clone(), new_path.clone())?;
         }
 
         files.remove(old_index);
@@ -389,7 +391,10 @@ impl PrivateServerFn for FileTree {
 
     fn get_automerge(&mut self, path: &String) -> Res<Vec<u8>> {
         if self.files.binary_search(path).is_err() {
-            Err(Error::new(io::ErrorKind::NotFound, format!("file is not found {path}")))
+            Err(Error::new(
+                io::ErrorKind::NotFound,
+                format!("file is not found {path}"),
+            ))
         } else if let Some(file) = self.tree.get(path) {
             Ok(file.save())
         } else {
@@ -448,7 +453,7 @@ impl PubServerFn for FileTree {
         &mut self,
         tx: RPC,
         priviledge: Option<Priviledge>,
-        username: &String,
+        username: &str,
     ) -> Result<Message, ()> {
         match tx {
             RPC::EditBuffer { .. } | RPC::ReqSaveFile { .. }
@@ -540,14 +545,14 @@ impl PubServerFn for FileTree {
                     path,
                     s_position,
                     e_position,
-                    username: username.clone(),
+                    username: username.to_string(),
                 };
                 Ok(rpc.encode().map_err(Self::err_msg)?)
             }
 
             RPC::ReqMoveCursor { path, position } => {
                 let rpc = RPC::ResMoveCursor {
-                    username: username.clone(),
+                    username: username.to_string(),
                     path,
                     position,
                 };

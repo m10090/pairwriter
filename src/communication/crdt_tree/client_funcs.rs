@@ -1,9 +1,9 @@
+#![allow(private_bounds)]
 use crate::communication::rpc::RPC;
 
 use super::*;
 use std::io::{self, Error};
 use std::path::Path;
-use tokio_tungstenite::tungstenite::Message;
 
 type Res<T> = io::Result<T>;
 
@@ -324,14 +324,6 @@ impl PubClientFn for FileTree {
     }
     fn handle_msg(&mut self, rpc: RPC) {
         match rpc {
-            RPC::ResMark {
-                path,
-                s_position,
-                e_position,
-                username,
-            } => {
-                todo!() // should call the api of user
-            }
             RPC::EditBuffer { path, changes } => {
                 self.edit_buf(path, changes.as_ref()).unwrap_or_else(|e| eprintln!("{}", e));
             }
@@ -364,11 +356,22 @@ impl PubClientFn for FileTree {
                 self.tree
                     .insert(path, automerge::Automerge::load(file.as_slice()).unwrap());
             }
+            #[allow(unused_variables)]
             RPC::ResMoveCursor {
                 username,
                 path,
                 position,
             } => todo!(),
+
+            #[allow(unused_variables)]
+            RPC::ResMark {
+                path,
+                s_position,
+                e_position,
+                username,
+            } => {
+                todo!() // should call the api of user
+            }
 
             m => eprintln!("Invalid RPC message {m:?}"),
         }

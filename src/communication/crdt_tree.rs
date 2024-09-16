@@ -1,4 +1,3 @@
-use automerge::transaction::Transactable;
 use automerge::Automerge;
 use std::collections::HashMap;
 use std::io::Error;

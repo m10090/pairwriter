@@ -9,6 +9,7 @@ use crate::server::connection::Priviledge;
 
 #[derive(Debug, Clone, Encode, Decode, PartialEq)]
 #[derive(Serialize, Deserialize)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum RPC {
     /// Response to a connection request
     ResConnect{

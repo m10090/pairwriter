@@ -20,6 +20,7 @@ pub async fn client_send_message(msg: Message) -> Result<(), Error> {
 /// create a new on message handler that will handle incoming message
 /// takin the consderation the message is received or not
 #[inline]
+#[allow(clippy::manual_async_fn)]
 pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output = ()> {
     async move {
         while let Some(message) = reader.next().await {

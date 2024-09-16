@@ -1,5 +1,5 @@
 use super::*;
-use automerge::{ObjType, ReadDoc as _, ScalarValue, Value, ROOT};
+use automerge::{ObjType, ReadDoc as _, Value, ROOT};
 use std::io;
 use std::io::Result as Res;
 impl FileTree {

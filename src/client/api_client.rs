@@ -6,14 +6,10 @@ use crate::{
     },
     server::connection::Priviledge,
 };
-use automerge::{sync, transaction::Transactable, PatchLog, ReadDoc, ROOT};
+use automerge::{transaction::Transactable, ReadDoc, ROOT};
 use std::io;
-use tokio_tungstenite::tungstenite::Message;
 
-use tokio::sync::{
-    mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender},
-    Mutex,
-};
+use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 
 type Res<T> = io::Result<T>;
 
@@ -59,7 +55,6 @@ impl ClientApi {
         };
         Ok(file)
     }
-
 
     pub async fn read_tx(&mut self, rpc: RPC) {
         let file_tree = &mut self.file_tree;

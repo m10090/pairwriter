@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod client;
 mod communication;
 mod integration_testing;

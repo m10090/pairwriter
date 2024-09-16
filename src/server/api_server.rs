@@ -1,17 +1,16 @@
-use std::collections::VecDeque;
 use std::io;
 
-use super::connection::{ClientRes, Priviledge};
-use super::{CLIENTS_RES, CLIENTS_SEND};
-use crate::communication::crdt_tree::FileTree;
-use crate::communication::{crdt_tree::server_funcs::PubServerFn as _, rpc::RPC};
-use crate::server::messageing::server_send_message;
-use automerge::patches::TextRepresentation;
-use automerge::transaction::Transactable;
-use automerge::{ReadDoc, ROOT};
+use super::{connection::Priviledge, CLIENTS_RES, CLIENTS_SEND};
+use crate::{
+    communication::{
+        crdt_tree::{server_funcs::PubServerFn as _, FileTree},
+        rpc::RPC,
+    },
+    server::messageing::server_send_message,
+};
+use automerge::{transaction::Transactable, ReadDoc, ROOT};
 use futures::SinkExt;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
-use tokio::sync::{Mutex, Semaphore};
 use tokio_tungstenite::tungstenite::Message;
 
 #[derive(Debug)]
@@ -49,7 +48,13 @@ impl ServerApi {
     /// if del and text is None, then it is an total update operation
     /// if one of them is None, then it does nothing
     /// else it is a splice operation
-    pub async fn edit_buf(&mut self, path: String, pos: Option<usize>, del: Option<isize>, text: &str) {
+    pub async fn edit_buf(
+        &mut self,
+        path: String,
+        pos: Option<usize>,
+        del: Option<isize>,
+        text: &str,
+    ) {
         let map = &mut (&mut self.file_tree).tree;
         let file = map.get_mut(&path).unwrap();
         let obj_id = file.get(ROOT, "content").unwrap().unwrap().1; // to do
@@ -83,8 +88,6 @@ impl ServerApi {
     pub fn take_receiver(&mut self) -> UnboundedReceiver<RPC> {
         self.receiver.take().unwrap()
     }
-
-
 
     // pub async fn close_connection(&self, username: &String) -> Result<(), String> {
     //     let mut queue = CLIENTS_RES.lock().await;
@@ -128,9 +131,8 @@ impl ServerApi {
             server_send_message(x);
         }
     }
-    
+
     pub async fn get_file_maps(&self) -> (&Vec<String>, &Vec<String>) {
         self.file_tree.get_maps()
     }
-
 }

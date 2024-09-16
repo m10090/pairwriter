@@ -1,7 +1,6 @@
-use std::ops::Deref;
-use std::sync::atomic::AtomicUsize;
 // this testing method is not that great and it needs alot of refactoring and cleaning
 // todo: use mspc to defined expected messages
+#[allow(unused_imports)] // this is used when injected the integration testing file
 use crate::communication::rpc::RPC;
 use lazy_static::lazy_static;
 use tokio::sync::Mutex;
@@ -23,7 +22,7 @@ pub(crate) async fn reseived_message(msg: Message) {
         expected_message.is_none() || msg == *expected_message.as_ref().unwrap(),
         "this is not the expected message: message found {}, expected: {}",
         msg,
-        expected_message.as_ref().unwrap().deref()
+        expected_message.as_ref().unwrap()
     );
     *waiting = false;
 }

@@ -1,4 +1,7 @@
-use futures::{stream::{SplitSink, SplitStream}, SinkExt as _, StreamExt as _};
+use futures::{
+    stream::{SplitSink, SplitStream},
+    SinkExt as _,
+};
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use tokio::{
@@ -12,7 +15,6 @@ use variables::*;
 
 type SinkSend = SplitSink<WebSocketStream<TcpStream>, Message>;
 type SinkRes = SplitStream<WebSocketStream<TcpStream>>;
-
 
 pub async fn start_server(port: u16) {
     // main point
