@@ -32,8 +32,7 @@ pub async fn start_server(port: u16) {
 
 
 
-#[cfg(feature = "integration_testing")]
-pub async fn no_client_connected() -> bool {
+pub(crate) async fn no_client_connected() -> bool {
     // this is pub for integration tests
     CLIENTS_RES.lock().await.is_empty()
 }
