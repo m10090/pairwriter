@@ -3,6 +3,7 @@ use futures::{
     SinkExt as _,
 };
 use lazy_static::lazy_static;
+use notify::{FsEventWatcher, RecommendedWatcher, Watcher};
 use std::collections::HashMap;
 use tokio::{
     net::{TcpListener, TcpStream},
@@ -28,6 +29,10 @@ pub async fn start_server(port: u16) {
     }
 }
 
+
+
+
+#[cfg(feature = "integration_testing")]
 pub async fn no_client_connected() -> bool {
     // this is pub for integration tests
     CLIENTS_RES.lock().await.is_empty()
@@ -37,3 +42,5 @@ pub(crate) mod api_server;
 pub(crate) mod connection;
 pub(crate) mod messageing;
 pub(crate) mod variables;
+#[cfg(test)]
+pub(crate) mod test;

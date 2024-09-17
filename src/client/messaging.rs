@@ -46,7 +46,7 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
                 } else {
                     match API.get() {
                         Some(api) => api.lock().await.read_tx(rpc).await,
-                        None => println!("API not initialized"),
+                        None => eprintln!("API not initialized"),
                     };
                 }
             }

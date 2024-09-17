@@ -60,9 +60,8 @@ async fn handle_message() -> Result<Message, String> {
 
     if res.is_err() {
         // could be all clients are closed
-        println!("Error reading message: {:?}", res);
         connection::remove_dead_clients().await;
-        return Err("all clients are closed".to_string());
+        return Err("all client send error".to_string());
     }
     res
 }
@@ -71,7 +70,7 @@ pub(crate) async fn handle_messages() -> ! {
     let (tx, mut rx) = mpsc::unbounded_channel();
     TX.set(tx.clone()).unwrap();
     loop {
-        async {
+        let _ = async {
             connection::remove_dead_clients().await;
             let message = tokio::select! {
                 client_message = handle_message() => client_message?,
@@ -83,10 +82,10 @@ pub(crate) async fn handle_messages() -> ! {
             broadcast_message(message).await?;
             Ok::<(), String>(())
         }
-        .await
-        .unwrap_or_else(|err| {
-            eprintln!("{}", err);
-        });
+        .await;
+        // .unwrap_or_else(|_err| {
+        //     // eprintln!("{}", err);
+        // });
     }
 }
 
