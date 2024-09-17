@@ -40,6 +40,16 @@ fn remove_dir_resulting_in_empty_dir() {
 
     assert_vec(ft, Some(&files), Some(&emty_dirs));
 }
+#[test] 
+fn removing_emty_dir_resulting_in_empty_dir() {
+    let files = FILES.clone();
+    let emty_dirs = vec!["./empty_dir/empty_dir/".to_string()];
+    let mut ft = FileTree::new(files.clone(), emty_dirs.clone());
+
+    ft.rm_dir("./empty_dir/empty_dir/".to_string()).unwrap();
+    let emty_dirs = vec!["./empty_dir/".to_string()];
+    assert_vec(ft, Some(&files), Some(&emty_dirs));
+}
 
 #[test]
 fn make_dir_expeted_err() {

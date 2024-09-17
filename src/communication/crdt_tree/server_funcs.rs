@@ -289,6 +289,14 @@ impl PrivateServerFn for FileTree {
             #[cfg(not(test))]
             fs::remove_dir_all(&path)?;
             emty_dirs.remove(i);
+            if !self.in_dir(&parent_dir) {
+                match self.emty_dirs.binary_search(&parent_dir) {
+                    Ok(_) => {}
+                    Err(i) => {
+                        self.emty_dirs.insert(i, parent_dir);
+                    }
+                }
+            }
             return Ok(());
         }
 
