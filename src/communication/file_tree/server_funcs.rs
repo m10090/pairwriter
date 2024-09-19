@@ -420,7 +420,7 @@ impl PubServerFn for FileTree {
             .into_iter()
             .filter_map(|e| e.ok())
             .filter(|e| e.file_type().is_file())
-            .map(|e| e.path().display().to_string())
+            .map(|e| e.path().display().to_string().replace("\\", "/"))
             // make it unix style paths
             .collect::<Vec<String>>();
         files.sort_unstable();
@@ -437,7 +437,7 @@ impl PubServerFn for FileTree {
             .into_iter()
             .filter_map(|e| e.ok())
             .filter(|e| e.file_type().is_dir())
-            .map(|e| e.path().display().to_string() + "/") // this result in problems is "./"
+            .map(|e| e.path().display().to_string().replace("\\", "/") + "/") // this result in problems is "./"
             // directory
             .filter(|e| is_directory_empty(e).unwrap_or(false))
             .collect::<Vec<String>>()

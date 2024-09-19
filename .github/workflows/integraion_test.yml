@@ -11,7 +11,10 @@ env:
 
 jobs:
   messaging:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v4
       - name: Build
@@ -21,7 +24,10 @@ jobs:
       - name: start client test
         run: cd test && ./test_client.sh
   server: # using a new env is better due to the file changes
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v4
       - name: Build
@@ -33,7 +39,10 @@ jobs:
           test_file: "./CLIENT/CLIENT_TEST_CODE_SNIPPET.rs"
         run: cd test && ./test_client.sh
   file-creation-and-editing:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{matrix.os}}
     steps:
       - uses: actions/checkout@v4
       - name: Build
