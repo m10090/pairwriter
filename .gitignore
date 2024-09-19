@@ -22,3 +22,7 @@ Cargo.lock
 #.idea/
 .DS_Store
 .idea/
+
+
+# remove the log files
+log.txt

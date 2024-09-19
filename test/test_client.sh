@@ -11,6 +11,9 @@ fi
 if [ -z "$file" ]; then 
   file="./CLIENT/CLIENT_EDIT_FILE.rs"
 fi
+if [ $(command -v brew && $?) ]; then
+  brew install coreutils
+fi 
 
 # Inject the test data
 cat $file > ./test_injection.rs
