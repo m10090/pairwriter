@@ -325,7 +325,8 @@ impl PubClientFn for FileTree {
     fn handle_msg(&mut self, rpc: RPC) {
         match rpc {
             RPC::EditBuffer { path, changes } => {
-                self.edit_buf(path, changes.as_ref()).unwrap_or_else(|e| log::error!("{}", e));
+                self.edit_buf(path, changes.as_ref())
+                    .unwrap_or_else(|e| log::error!("{}", e));
             }
             RPC::CreateFile { path } => {
                 self.create_file(path)
@@ -349,9 +350,11 @@ impl PubClientFn for FileTree {
                 self.rm_dir(path).unwrap_or_else(|e| log::error!("{}", e));
             }
             RPC::FileSaved { .. } => {
-                log::error!("Invalid RPC");
-            } // should call the api to remove the dirty
-            // bit
+                // todo
+                // should call the api to remove the dirty
+                // bit
+            }
+
             RPC::ResSendFile { path, file } => {
                 self.tree
                     .insert(path, automerge::Automerge::load(file.as_slice()).unwrap());

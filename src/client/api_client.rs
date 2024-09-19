@@ -1,7 +1,7 @@
 use crate::{
     client::messaging::client_send_message,
     communication::{
-        crdt_tree::{client_funcs::PubClientFn as _, FileTree},
+        file_tree::{client_funcs::PubClientFn as _, FileTree},
         rpc::RPC,
     },
     server::connection::Priviledge,

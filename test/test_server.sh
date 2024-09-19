@@ -8,8 +8,9 @@ fi
 
 cat ./SERVER/SERVER_TEST_CODE_SNIPPET.rs > ./test_injection.rs
 
+LOGFILE=test_result
 # Injecting the test code into the server code
-timeout -s SIGINT 50s cargo run --features "integration_testing_server"  server $port
+timeout -s SIGINT 50s  cargo run --features "integration_testing_server"  server $port
 
 if grep -q "Test Passed!" test_result; then
   echo "Test passed"

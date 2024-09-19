@@ -1,4 +1,4 @@
-pub(crate) mod crdt_tree;
+pub(crate) mod file_tree;
 
 pub(crate) mod rpc;
 

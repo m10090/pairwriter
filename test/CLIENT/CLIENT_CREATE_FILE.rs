@@ -2,7 +2,7 @@ pub async fn run_test() {
     use std::fs;
     sleep(Duration::from_secs(6)).await;
     let client_api = crate::client::API.get().unwrap();
-    log::info!("test_is_running");
+    println!("test_is_running");
 
     let rpc = RPC::CreateFile {
         path: "./this.c".to_string(),
@@ -16,8 +16,8 @@ pub async fn run_test() {
     set_and_await(None).await; // this will wait for the next message
 
     if fs::read_to_string("../this.c").unwrap() == "" {
-        log::info!("Test Passed!");
+        println!("Test Passed!");
     } else {
-        log::info!("Test Failed!");
+        println!("Test Failed!");
     }
 }

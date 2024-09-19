@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, thread::sleep, time::Duration};
 
 use super::*;
 use ctor::ctor;
@@ -83,20 +83,22 @@ impl FileTree {
 #[test]
 #[serial]
 fn right_naming() {
-    fs::create_dir("./emty_dir/").unwrap();
+    fs::create_dir("./empty_dir/").unwrap();
     let res = panic::catch_unwind(|| {
         let res = FileTree::build_file_tree();
         for i in res.emty_dirs.iter() {
             assert!(FileTree::valid_dir_path(i));
         }
+        dbg!(&res.emty_dirs);
         res.emty_dirs
-            .binary_search(&"./emty_dir/".to_string())
+            .binary_search(&"./empty_dir/".to_string())
             .unwrap();
+        dbg!(&res.emty_dirs);
         for i in res.files.iter() {
             assert!(File::open(i).is_ok());
         }
     });
-    fs::remove_dir("./emty_dir/").unwrap();
+    fs::remove_dir("./empty_dir/").unwrap();
     res.unwrap();
 }
 

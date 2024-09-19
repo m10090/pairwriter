@@ -3,7 +3,7 @@ use std::{env, io};
 use super::{connection::Priviledge, CLIENTS_RES, CLIENTS_SEND};
 use crate::{
     communication::{
-        crdt_tree::{server_funcs::PubServerFn as _, FileTree},
+        file_tree::{server_funcs::PubServerFn as _, FileTree},
         rpc::RPC,
     },
     server::messageing::server_send_message,

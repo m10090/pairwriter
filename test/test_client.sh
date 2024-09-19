@@ -25,7 +25,7 @@ if grep -q "Test Passed!" test_result; then
   result=0
 else
   echo "Test failed"
-  echo "\n\n\n"
+  printf "\n\n\n"
   cat test_result
   exit 1
 fi
