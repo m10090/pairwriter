@@ -70,7 +70,7 @@ pub(crate) async fn handle_messages() -> ! {
     let (tx, mut rx) = mpsc::unbounded_channel();
     TX.set(tx.clone()).unwrap();
     loop {
-        let _ = async {
+        async {
             connection::remove_dead_clients().await;
             let message = tokio::select! {
                 client_message = handle_message() => client_message?,
@@ -82,10 +82,10 @@ pub(crate) async fn handle_messages() -> ! {
             broadcast_message(message).await?;
             Ok::<(), String>(())
         }
-        .await;
-        // .unwrap_or_else(|_err| {
-        //     // eprintln!("{}", err);
-        // });
+        .await
+        .unwrap_or_else(|err| {
+            log::error!("{}", err);
+        });
     }
 }
 

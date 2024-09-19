@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::io::Error;
 use std::path::Path;
 
+
 #[derive(Debug, Clone)]
 pub(crate) struct FileTree {
     pub(crate) tree: HashMap<String, Automerge>,
@@ -60,7 +61,7 @@ impl FileTree {
             + "/"
     }
     fn err_msg(e: impl std::fmt::Display) {
-        eprintln!("{}", e);
+        log::info!("{}", e);
     }
     /// build the tree from the files and emty_dirs
     /// returns the files and emty_dirs

@@ -2,7 +2,7 @@ pub async fn run_test() {
     // await_undefined_message().await;
     sleep(Duration::from_secs(6)).await;
     use std::fs;
-    println!("test_is_running");
+    log::info!("test_is_running");
 
     let client_api = crate::client::API.get().unwrap();
 
@@ -17,7 +17,7 @@ pub async fn run_test() {
     
     set_and_await(None).await;
     if fs::read_to_string("../test.txt").is_ok()  {
-        println!("file created");
+        log::info!("file created");
     } else {
         panic!("file not created");
     }
@@ -29,7 +29,7 @@ pub async fn run_test() {
 
 
     set_and_await(None).await;
-    println!("got the file");
+    log::info!("got the file");
 
     let _ = client_api
         .lock()
@@ -45,7 +45,7 @@ pub async fn run_test() {
         .encode()
         .unwrap(), )
     ).await;
-    println!("edited the file");
+    log::info!("edited the file");
 
     let _ = client_api
         .lock()
@@ -56,11 +56,11 @@ pub async fn run_test() {
         .await;
     await_the_last_message().await;
 
-    println!("file saved");
+    log::info!("file saved");
     if fs::read_to_string("../test.txt").unwrap() == "test" {
         let _ = fs::remove_file("../test.txt");
-        println!("Test Passed!");
+        log::info!("Test Passed!");
     } else {
-        println!("Test Failed!");
+        log::info!("Test Failed!");
     }
 }

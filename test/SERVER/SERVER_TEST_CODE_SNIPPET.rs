@@ -6,7 +6,7 @@ pub async fn run_test(){
         }
         sleep(Duration::from_secs(1)).await;
     }
-    println!("this_is_running");
+    log::info!("this_is_running");
 
     // awaiting message is only for the client and not for the server
 
@@ -16,7 +16,7 @@ pub async fn run_test(){
 
     crate::server::messageing::server_send_message(message.unwrap());
     
-    println!("Test passed!");
+    log::info!("Test passed!");
 
 
 }

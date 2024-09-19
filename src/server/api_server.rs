@@ -1,4 +1,4 @@
-use std::io;
+use std::{env, io};
 
 use super::{connection::Priviledge, CLIENTS_RES, CLIENTS_SEND};
 use crate::{
@@ -125,7 +125,7 @@ impl ServerApi {
     pub async fn send_rpc(&mut self, rpc: RPC) {
         if let Ok(x) = self
             .file_tree
-            .handle_msg(rpc.clone(), None, &"".to_string())
+            .handle_msg(rpc.clone(), None, &env::var("SERVER_USERNAME").unwrap_or("SERVER".to_string()))
             .await
         {
             server_send_message(x);

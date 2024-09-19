@@ -22,6 +22,16 @@ pub static API: OnceLock<Mutex<ClientApi>> = OnceLock::new();
 /// for `client_send_message` function
 /// Add the url with **"ws://"** or **"wss://"** prefix
 pub async fn connect_as_client(url: String, username: String) {
+    {
+        use simplelog::{CombinedLogger, Config, LevelFilter, WriteLogger};
+        use std::env;
+        CombinedLogger::init(vec![WriteLogger::new(
+            LevelFilter::Warn,
+            Config::default(),
+            std::fs::File::create(env::var("LOGFILE").unwrap_or("log.txt".to_string())).unwrap(),
+        )])
+        .unwrap();
+    } // init logger
     let (ws_stream, _) = connect_async(url).await.expect("Failed to connect"); // connect to the
                                                                                // server panic is intented here
 

@@ -46,7 +46,7 @@ fn is_sorted<T: Ord>(data: &[T]) -> bool {
 }
 fn contains_all(data: &[String], other: &[String]) -> bool {
     other.iter().all(|x| {
-        println!("{}", x);
+        log::info!("{}", x);
         data.contains(x)
     })
 }

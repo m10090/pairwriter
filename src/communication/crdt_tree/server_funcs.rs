@@ -1,5 +1,4 @@
 #![allow(private_bounds)]
-use crate::server::variables::CLIENTS_SEND;
 use crate::server::{connection::Priviledge, messageing};
 use automerge::{transaction::Transactable, ROOT};
 use futures::SinkExt as _;
@@ -469,8 +468,8 @@ impl PubServerFn for FileTree {
             RPC::EditBuffer { .. } | RPC::ReqSaveFile { .. }
                 if priviledge.is_some() && priviledge.unwrap() == Priviledge::ReadOnly =>
             {
-                eprintln!("Unauthorized access by user {username}");
-                eprintln!("user trying to edit file without access {username}");
+                log::error!("Unauthorized access by user {username}");
+                log::error!("user trying to edit file without access {username}");
                 Err(())
             }
 
@@ -494,8 +493,8 @@ impl PubServerFn for FileTree {
             | RPC::MoveDirectory { .. }
                 if priviledge.is_some() && priviledge.unwrap() == Priviledge::ReadOnly =>
             {
-                eprintln!("Unauthorized access by user {username}");
-                eprintln!("user trying to edit directory structure without access {username}");
+                log::error!("Unauthorized access by user {username}");
+                log::error!("user trying to edit directory structure without access {username}");
                 // client
                 //     .unwrap()
                 //     .send_message(
@@ -590,35 +589,35 @@ impl PubServerFn for FileTree {
 
             RPC::ReqBufferTree { .. } => {
                 // if this mean that this is server sent as the Some(client) is false
-                eprintln!("unhandled message {:?}", tx);
-                println!("this is should only be send by the client");
+                log::error!("unhandled message {:?}", tx);
+                log::info!("this is should only be send by the client");
                 Err(())
             }
 
             RPC::ResConnect { .. } => {
-                eprintln!("unhandled message {:?}", tx);
+                log::error!("unhandled message {:?}", tx);
                 Err(())
             }
             RPC::ChangePriviledge { .. } => {
-                eprintln!("unhandled message {:?}", tx);
-                println!("client trying to change priviledge");
+                log::error!("unhandled message {:?}", tx);
+                log::info!("client trying to change priviledge");
                 Err(())
             }
             RPC::ResSendFile { .. }
             | RPC::ResMoveCursor { .. }
             | RPC::ResMark { .. }
             | RPC::FileSaved { .. } => {
-                eprintln!("unhandled message {:?}", tx);
-                println!("this is a server message");
+                log::error!("unhandled message {:?}", tx);
+                log::info!("this is a server message");
                 Err(())
             }
             RPC::Error(e) => {
-                println!("error occurred: {} ", e);
+                log::info!("error occurred: {} ", e);
                 Err(())
             }
             RPC::AddUsername { .. } => {
-                eprintln!("unhandled message {:?}", tx);
-                println!("this should be send in connection request only");
+                log::error!("unhandled message {:?}", tx);
+                log::info!("this should be send in connection request only");
                 Err(())
             }
         }

@@ -325,31 +325,31 @@ impl PubClientFn for FileTree {
     fn handle_msg(&mut self, rpc: RPC) {
         match rpc {
             RPC::EditBuffer { path, changes } => {
-                self.edit_buf(path, changes.as_ref()).unwrap_or_else(|e| eprintln!("{}", e));
+                self.edit_buf(path, changes.as_ref()).unwrap_or_else(|e| log::error!("{}", e));
             }
             RPC::CreateFile { path } => {
                 self.create_file(path)
-                    .unwrap_or_else(|e| eprintln!("{}", e));
+                    .unwrap_or_else(|e| log::error!("{}", e));
             }
             RPC::MoveFile { path, new_path } => {
                 self.move_file(path, new_path)
-                    .unwrap_or_else(|e| eprintln!("{}", e));
+                    .unwrap_or_else(|e| log::error!("{}", e));
             }
             RPC::DeleteFile { path } => {
-                self.rm_file(path).unwrap_or_else(|e| eprintln!("{}", e));
+                self.rm_file(path).unwrap_or_else(|e| log::error!("{}", e));
             }
             RPC::CreateDirectory { path } => {
-                self.make_dir(path).unwrap_or_else(|e| eprintln!("{}", e));
+                self.make_dir(path).unwrap_or_else(|e| log::error!("{}", e));
             }
             RPC::MoveDirectory { path, new_path } => {
                 self.move_dir(path, new_path)
-                    .unwrap_or_else(|e| eprintln!("{}", e));
+                    .unwrap_or_else(|e| log::error!("{}", e));
             }
             RPC::DeleteDirectory { path } => {
-                self.rm_dir(path).unwrap_or_else(|e| eprintln!("{}", e));
+                self.rm_dir(path).unwrap_or_else(|e| log::error!("{}", e));
             }
             RPC::FileSaved { .. } => {
-                eprintln!("Invalid RPC");
+                log::error!("Invalid RPC");
             } // should call the api to remove the dirty
             // bit
             RPC::ResSendFile { path, file } => {
@@ -373,7 +373,7 @@ impl PubClientFn for FileTree {
                 todo!() // should call the api of user
             }
 
-            m => eprintln!("Invalid RPC message {m:?}"),
+            m => log::error!("Invalid RPC message {m:?}"),
         }
     }
 }

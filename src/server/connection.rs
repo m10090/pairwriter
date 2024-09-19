@@ -13,7 +13,7 @@ async fn handle_connection(raw_stream: TcpStream) -> Result<WebSocketStream<TcpS
     match accept_async(raw_stream).await {
         Ok(ws_stream) => Ok(ws_stream),
         Err(e) => {
-            eprintln!("Error: {:?}", e);
+            log::error!("Error: {:?}", e);
             Err(e.to_string())
         }
     }
@@ -64,7 +64,7 @@ pub(crate) async fn remove_dead_clients() {
     let mut clients_send = CLIENTS_SEND.lock().await;
     for (username, client) in clients_res.iter() {
         if !client.lock().await.open {
-            println!("Client with username: {} has disconnected", username);
+            log::info!("Client with username: {} has disconnected", username);
             clients_send.remove(username);
         }
     }

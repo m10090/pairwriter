@@ -1,3 +1,4 @@
+
 use super::*;
 use futures::Future;
 use tokio_tungstenite::tungstenite::{Error, Message};
@@ -46,7 +47,10 @@ pub(super) fn get_on_message(mut reader: ReaderWsStream) -> impl Future<Output =
                 } else {
                     match API.get() {
                         Some(api) => api.lock().await.read_tx(rpc).await,
-                        None => eprintln!("API not initialized"),
+                        None => {
+
+                       
+                        },
                     };
                 }
             }
