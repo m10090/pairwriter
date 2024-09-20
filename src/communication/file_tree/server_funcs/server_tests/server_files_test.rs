@@ -94,11 +94,9 @@ fn open_file() {
 
         assert_vec(fs.clone(), Some(&files), Some(&emty_dirs));
 
-        use automerge::*;
 
         let auto = fs.tree.get("./file.txt").unwrap();
-        let (v, exid) = auto.get(ROOT, "content").unwrap().unwrap();
-        assert!(auto.text(exid).unwrap() == "hello world", "auto: {:?}", v);
+        assert!(auto.read().unwrap() == b"hello world") ;
 
         assert_vec(fs.clone(), Some(&files), Some(&emty_dirs));
     });
