@@ -71,7 +71,7 @@ impl ServerApi {
         &mut self,
         rpc: RPC,
         client: Priviledge,
-        username: &String,
+        username: &str,
     ) -> Result<Message, ()> {
         let file = &mut self.file_tree;
         let result = file.handle_msg(rpc.clone(), Some(client), username).await?; //todo
@@ -83,15 +83,21 @@ impl ServerApi {
         self.receiver.take().unwrap()
     }
 
-    // pub async fn close_connection(&self, username: &String) -> Result<(), String> {
-    //     let mut queue = CLIENTS_RES.lock().await;
-    //     match queue.remove(username) {
-    //         Some(c) => {
-    //             Ok(())
-    //         }
-    //         None => Err("Client not found".to_string()),
-    //     }
-    // }
+    pub async fn close_connection(&self, username: &str) -> Result<(), String> {
+        let mut clients_send = CLIENTS_RES.lock().await;
+        match clients_send.remove(username) { 
+            // removing the client from CLIENTS_RES will remove it from CLIENTS_SEND in the next iteration
+            Some(_c) => {
+                Ok(())
+            }
+            None => Err("Client not found".to_string()),
+        }
+    }
+
+    pub async fn list_users(&self) -> Vec<String> {
+        let clients = CLIENTS_RES.lock().await;
+        clients.keys().cloned().collect()
+    }
 
     pub async fn change_priviledge(
         &self,

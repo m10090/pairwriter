@@ -94,6 +94,7 @@ pub enum RPC {
     Undo {
         path: String,
     },
+
     Redo {
         path: String,
     },

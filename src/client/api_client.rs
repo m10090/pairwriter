@@ -56,6 +56,10 @@ impl ClientApi {
     }
 
     pub async fn read_tx(&mut self, rpc: RPC) {
+        if let RPC::ChangePriviledge { priviledge } = rpc {
+            self.priviledge = priviledge;
+            return;
+        }
         let file_tree = &mut self.file_tree;
         file_tree.handle_msg(rpc.clone());
         let _ = self.sender.send(rpc);
@@ -81,9 +85,9 @@ impl ClientApi {
         let file = map.get_mut(&path).unwrap();
         let result = file.edit(pos, del, text);
 
-
-        let rpc = RPC::EditBuffer { 
-            path, changes: result.0,
+        let rpc = RPC::EditBuffer {
+            path,
+            changes: result.0,
             old_head_idx: result.1,
             new_heads: result.2,
         }; // this is safe because this operation is idiempotent
