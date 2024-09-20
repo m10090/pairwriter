@@ -28,11 +28,17 @@ trait PrivateServerFn {
     fn move_dir(&mut self, old_path: String, new_path: String) -> Res<()>; // dir operation
     fn rm_dir(&mut self, path: String) -> Res<()>;
     fn make_dir(&mut self, path: String) -> Res<()>;
-    fn edit_buf(&mut self, path: String, changes: &[u8]) -> Res<()>;
+    fn update_buf(
+        &mut self,
+        path: String,
+        changes: &[u8],
+        old_head_idx: usize,
+        heads: &[Vec<[u8; 32]>],
+    ) -> Res<()>;
 
     fn save_buf(&mut self, path: String) -> Res<()>;
     #[allow(clippy::ptr_arg)] // this is because of the binary_search
-    fn get_automerge(&mut self, path: &String) -> Res<Vec<u8>>;
+    fn get_automerge(&mut self, path: &String) -> Res<(Vec<u8>, Vec<Vec<[u8; 32]>>, usize)>;
 }
 
 pub(crate) trait PubServerFn: PrivateServerFn {
@@ -64,7 +70,7 @@ impl PrivateServerFn for FileTree {
             Err(ref e) if e.kind() == io::ErrorKind::InvalidData => FileType::Bin(fs::read(&path)?),
             Err(e) => return Err(e),
         };
-        let mut buf = Automerge::new();
+        let mut buf = automerge::Automerge::new();
         match file_content {
             FileType::Text(file_text) => {
                 let mut tx = buf.transaction();
@@ -80,7 +86,7 @@ impl PrivateServerFn for FileTree {
                 tx.commit();
             }
         }
-        self.tree.insert(path, buf);
+        self.tree.insert(path, Crdt::open(buf));
         Ok(())
     }
 
@@ -379,15 +385,19 @@ impl PrivateServerFn for FileTree {
         }
     }
 
-    fn edit_buf(&mut self, path: String, changes: &[u8]) -> Res<()> {
+    fn update_buf(
+        &mut self,
+        path: String,
+        changes: &[u8],
+        old_head_idx: usize,
+        heads: &[Vec<[u8; 32]>],
+    ) -> Res<()> {
         // here error should be sent but in the case of client there shouldn't be any erros
         if self.files.binary_search(&path).is_err() {
             return Err(Error::new(io::ErrorKind::NotFound, "File Not Found"));
         }
         if let Some(file) = self.tree.get_mut(&path) {
-            file.load_incremental(changes)
-                .map_err(Self::err_msg)
-                .map_err(|_| Error::new(io::ErrorKind::InvalidData, "Can't merge"))?;
+            file.update(changes, old_head_idx, heads);
             Ok(())
         } else {
             Err(Error::new(
@@ -397,7 +407,7 @@ impl PrivateServerFn for FileTree {
         }
     }
 
-    fn get_automerge(&mut self, path: &String) -> Res<Vec<u8>> {
+    fn get_automerge(&mut self, path: &String) -> Res<(Vec<u8>, Vec<Vec<[u8; 32]>>, usize)> {
         if self.files.binary_search(path).is_err() {
             Err(Error::new(
                 io::ErrorKind::NotFound,
@@ -440,10 +450,8 @@ impl PubServerFn for FileTree {
             .map(|e| e.path().display().to_string().replace("\\", "/") + "/") // this result in problems is "./"
             // directory
             .filter(|e| is_directory_empty(e).unwrap_or(false))
-            .collect::<Vec<String>>()
-            ;
+            .collect::<Vec<String>>();
         emty_dirs.sort_unstable();
-
 
         // this is the fix of the "./" problem
         if let Ok(i) = emty_dirs.binary_search(&".//".to_string()) {
@@ -476,10 +484,25 @@ impl PubServerFn for FileTree {
                 Err(())
             }
 
-            RPC::EditBuffer { path, changes } => {
-                self.edit_buf(path.clone(), changes.as_ref())
-                    .map_err(Self::err_msg)?;
-                let rpc = RPC::EditBuffer { path, changes };
+            RPC::EditBuffer {
+                path,
+                changes,
+                old_head_idx,
+                new_heads: heads,
+            } => {
+                self.update_buf(
+                    path.clone(),
+                    changes.as_ref(),
+                    old_head_idx,
+                    heads.as_slice(),
+                )
+                .map_err(Self::err_msg)?;
+                let rpc = RPC::EditBuffer {
+                    path,
+                    changes,
+                    old_head_idx,
+                    new_heads: heads,
+                };
                 Ok(rpc.encode().map_err(Self::err_msg)?)
             }
             RPC::ReqSaveFile { path } => {
@@ -572,9 +595,14 @@ impl PubServerFn for FileTree {
             }
 
             RPC::ReqBufferTree { path } if priviledge.is_some() => {
-                let file = self.get_automerge(&path).map_err(Self::err_msg)?;
+                let result = self.get_automerge(&path).map_err(Self::err_msg)?;
 
-                let rpc = RPC::ResSendFile { path, file };
+                let rpc = RPC::ResSendFile {
+                    path,
+                    file: result.0,
+                    heads_history: result.1,
+                    head_idx: result.2,
+                };
                 use crate::server::variables::CLIENTS_SEND;
                 let clients_send = CLIENTS_SEND.lock().await;
                 if let Some(client) = clients_send.get(username) {

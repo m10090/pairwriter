@@ -1,4 +1,5 @@
 #![allow(private_bounds)]
+
 use crate::communication::rpc::RPC;
 
 use super::*;
@@ -22,7 +23,13 @@ trait PrivateClientFn {
     /// make a new directory in the tree
     fn make_dir(&mut self, path: String) -> Res<()>; // EMTY_DIRS_OP
 
-    fn edit_buf(&mut self, path: String, changes: &[u8]) -> Res<()>;
+    fn update_buf(
+        &mut self,
+        path: String,
+        changes: &[u8],
+        old_head_idx: usize,
+        heads: &[Vec<[u8; 32]>],
+    ) -> Res<()>;
 }
 
 pub trait PubClientFn: PrivateClientFn {
@@ -206,6 +213,14 @@ impl PrivateClientFn for FileTree {
         if let Ok(i) = emty_dirs.binary_search(&path) {
             // EMTY_DIRS_OP
             emty_dirs.remove(i);
+            if !self.in_dir(&parent_dir) {
+                match self.emty_dirs.binary_search(&parent_dir) {
+                    Ok(_) => {}
+                    Err(i) => {
+                        self.emty_dirs.insert(i, parent_dir);
+                    }
+                }
+            }
             return Ok(());
         }
 
@@ -274,14 +289,18 @@ impl PrivateClientFn for FileTree {
 
         Ok(())
     }
-    fn edit_buf(&mut self, path: String, changes: &[u8]) -> Res<()> {
+    fn update_buf(
+        &mut self,
+        path: String,
+        changes: &[u8],
+        old_head_idx: usize,
+        heads: &[Vec<[u8; 32]>],
+    ) -> Res<()> {
         if self.files.binary_search(&path).is_err() {
             return Err(Error::new(io::ErrorKind::NotFound, "File Not Found"));
         }
         if let Some(file) = self.tree.get_mut(&path) {
-            file.load_incremental(changes)
-                .map_err(Self::err_msg)
-                .map_err(|_| Error::new(io::ErrorKind::InvalidData, "Can't merge"))?;
+            file.update(changes, old_head_idx, heads);
         }
         Ok(()) // here there is no error that is not the case in client
     }
@@ -324,8 +343,13 @@ impl PubClientFn for FileTree {
     }
     fn handle_msg(&mut self, rpc: RPC) {
         match rpc {
-            RPC::EditBuffer { path, changes } => {
-                self.edit_buf(path, changes.as_ref())
+            RPC::EditBuffer {
+                path,
+                changes,
+                old_head_idx,
+                new_heads: heads,
+            } => {
+                self.update_buf(path, changes.as_slice(), old_head_idx, heads.as_slice())
                     .unwrap_or_else(|e| log::error!("{}", e));
             }
             RPC::CreateFile { path } => {
@@ -355,9 +379,15 @@ impl PubClientFn for FileTree {
                 // bit
             }
 
-            RPC::ResSendFile { path, file } => {
+            RPC::ResSendFile {
+                path,
+                file,
+                heads_history,
+                head_idx,
+            } => {
                 self.tree
-                    .insert(path, automerge::Automerge::load(file.as_slice()).unwrap());
+                    .insert(path, Crdt::new(file, heads_history, head_idx))
+                    ;
             }
             #[allow(unused_variables)]
             RPC::ResMoveCursor {

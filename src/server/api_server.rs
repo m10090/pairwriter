@@ -8,7 +8,7 @@ use crate::{
     },
     server::messageing::server_send_message,
 };
-use automerge::{transaction::Transactable, ReadDoc, ROOT};
+
 use futures::SinkExt;
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};
 use tokio_tungstenite::tungstenite::Message;
@@ -55,21 +55,15 @@ impl ServerApi {
         del: Option<isize>,
         text: &str,
     ) {
-        let map = &mut (&mut self.file_tree).tree;
+        let map = &mut self.file_tree.tree;
         let file = map.get_mut(&path).unwrap();
-        let obj_id = file.get(ROOT, "content").unwrap().unwrap().1; // to do
-        let old_heads = file.get_heads();
-        {
-            let mut tx = file.transaction();
-            if pos.is_none() && del.is_none() {
-                let _ = tx.update_text(&obj_id, text);
-            } else {
-                let _ = tx.splice_text(obj_id, pos.unwrap(), del.unwrap(), text);
-            }
-            tx.commit();
-        }
-        let changes = file.save_after(old_heads.as_slice());
-        let rpc = RPC::EditBuffer { path, changes };
+        let result = file.edit(pos, del, text);
+        let rpc = RPC::EditBuffer {
+            path,
+            changes: result.0,
+            old_head_idx: result.1,
+            new_heads: result.2,
+        };
         server_send_message(rpc.encode().unwrap());
     }
 
@@ -125,7 +119,11 @@ impl ServerApi {
     pub async fn send_rpc(&mut self, rpc: RPC) {
         if let Ok(x) = self
             .file_tree
-            .handle_msg(rpc.clone(), None, &env::var("SERVER_USERNAME").unwrap_or("SERVER".to_string()))
+            .handle_msg(
+                rpc.clone(),
+                None,
+                &env::var("SERVER_USERNAME").unwrap_or("SERVER".to_string()),
+            )
             .await
         {
             server_send_message(x);

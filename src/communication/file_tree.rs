@@ -1,12 +1,12 @@
-use automerge::Automerge;
 use std::collections::HashMap;
 use std::io::Error;
 use std::path::Path;
+use crdt::Crdt;
 
 
 #[derive(Debug, Clone)]
 pub(crate) struct FileTree {
-    pub(crate) tree: HashMap<String, Automerge>,
+    pub(crate) tree: HashMap<String, Crdt>,
     files: Vec<String>, // this is not efficient but I don't care
     emty_dirs: Vec<String>, // take care when working with emty_dirs
                         // Every operation on emty_dirs will be commented with EMTY_DIRS_OP
@@ -72,3 +72,4 @@ impl FileTree {
 pub(crate) mod buf_func;
 pub(crate) mod client_funcs;
 pub(crate) mod server_funcs;
+pub(crate) mod crdt;

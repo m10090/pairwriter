@@ -80,21 +80,14 @@ impl ClientApi {
         }
         let map = &mut self.file_tree.tree;
         let file = map.get_mut(&path).unwrap();
-        let obj_id = file.get(ROOT, "content").unwrap().unwrap().1; // to do
-        let old_heads = file.get_heads();
-        {
-            let mut tx = file.transaction();
-            if pos.is_none() && del.is_none() {
-                let _ = tx.update_text(&obj_id, text);
-            } else {
-                let _ = tx.splice_text(obj_id, pos.unwrap(), del.unwrap(), text);
-            }
-            tx.commit();
-        }
+        let result = file.edit(pos, del, text);
 
-        let changes = file.save_after(old_heads.as_slice());
 
-        let rpc = RPC::EditBuffer { path, changes }; // this is safe because this operation is idiempotent
+        let rpc = RPC::EditBuffer { 
+            path, changes: result.0,
+            old_head_idx: result.1,
+            new_heads: result.2,
+        }; // this is safe because this operation is idiempotent
         let _ = client_send_message(rpc.encode().unwrap()).await;
     }
     pub async fn get_file_maps(&self) -> (&Vec<String>, &Vec<String>) {
