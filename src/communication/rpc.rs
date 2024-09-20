@@ -3,25 +3,24 @@ use bincode::{
     error::{DecodeError, EncodeError},
     Decode, Encode,
 };
+use serde::{Deserialize, Serialize};
 use tokio_tungstenite::tungstenite::Message;
-use serde::{Serialize, Deserialize};
 
 use crate::server::connection::Priviledge;
 
-#[derive(Debug, Clone, Encode, Decode, PartialEq)]
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Encode, Decode, PartialEq, Serialize, Deserialize)]
 #[allow(clippy::upper_case_acronyms)]
 pub enum RPC {
     /// Response to a connection request
-    ResConnect{
+    ResConnect {
         /// server username
-        username: String, 
+        username: String,
         files: Vec<String>,
         emty_dirs: Vec<String>,
         priviledge: Priviledge,
     },
     /// inform the client that the priviledge that (his/her) privilege has been changed
-    ChangePriviledge{
+    ChangePriviledge {
         priviledge: Priviledge,
     },
     /// buffer operations these are all read and write operaition
@@ -33,7 +32,7 @@ pub enum RPC {
     ResSendFile {
         path: String,
         file: Vec<u8>, // this could be a automerge tree
-        heads_history: Vec<Vec<[u8;32]>>,
+        heads_history: Vec<Vec<[u8; 32]>>,
         head_idx: usize,
     },
     EditBuffer {
@@ -41,7 +40,7 @@ pub enum RPC {
         changes: Vec<u8>,
         old_head_idx: usize,
         /// hash of the new heads
-        new_heads: Vec<Vec<[u8;32]>>,
+        new_heads: Vec<Vec<[u8; 32]>>,
     },
     ReqMoveCursor {
         path: String,
@@ -89,7 +88,14 @@ pub enum RPC {
         path: String,
     },
     /// this mean that the server saved the file
-    FileSaved{ 
+    FileSaved {
+        path: String,
+    },
+
+    Undo {
+        path: String,
+    },
+    Redo {
         path: String,
     },
 

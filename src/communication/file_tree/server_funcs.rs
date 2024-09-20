@@ -617,6 +617,25 @@ impl PubServerFn for FileTree {
                 drop(clients_send);
                 Ok(messageing::RESET_WAITING) // this mean that reset the message awaiting
             }
+            RPC::Undo { path } => {
+                let file = self
+                    .tree
+                    .get_mut(&path)
+                    .ok_or_else(|| Error::new(io::ErrorKind::NotFound, "file is not found"))
+                    .map_err(Self::err_msg)?;
+                file.undo();
+                Ok(RPC::Undo { path }.encode().map_err(Self::err_msg)?)
+            }
+            
+            RPC::Redo { path } => {
+                let file = self
+                    .tree
+                    .get_mut(&path)
+                    .ok_or_else(|| Error::new(io::ErrorKind::NotFound, "file is not found"))
+                    .map_err(Self::err_msg)?;
+                file.redo();
+                Ok(RPC::Redo { path }.encode().map_err(Self::err_msg)?)
+            }
 
             RPC::ReqBufferTree { .. } => {
                 // if this mean that this is server sent as the Some(client) is false

@@ -373,6 +373,16 @@ impl PubClientFn for FileTree {
             RPC::DeleteDirectory { path } => {
                 self.rm_dir(path).unwrap_or_else(|e| log::error!("{}", e));
             }
+            RPC::Undo { path } => {
+                if let Some(crdt) = self.tree.get_mut(&path) {
+                    crdt.undo();
+                }
+            }
+            RPC::Redo { path } => {
+                if let Some(crdt) = self.tree.get_mut(&path) {
+                    crdt.redo();
+                }
+            }
             RPC::FileSaved { .. } => {
                 // todo
                 // should call the api to remove the dirty
@@ -386,8 +396,7 @@ impl PubClientFn for FileTree {
                 head_idx,
             } => {
                 self.tree
-                    .insert(path, Crdt::new(file, heads_history, head_idx))
-                    ;
+                    .insert(path, Crdt::new(file, heads_history, head_idx));
             }
             #[allow(unused_variables)]
             RPC::ResMoveCursor {
