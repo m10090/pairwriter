@@ -234,7 +234,10 @@ fn undo_redo_operation() {
 
         auto.edit(None, None, "hello world 2");
         auto.undo();
+
         assert!(auto.read().unwrap() == b"hello world");
+        auto.redo();
+        assert!(auto.read().unwrap() == b"hello world 2");
         assert_vec(fs.clone(), Some(&files), Some(&emty_dirs));
     });
     fs::remove_file("./file.txt").unwrap();

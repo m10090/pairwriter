@@ -56,7 +56,7 @@ impl Crdt {
         }
 
         let new_heads = Self::bytes_to_head_history(new_heads.to_vec());
-        let new_heads = new_heads.as_slice(); 
+        let new_heads = new_heads.as_slice();
         // get the last common head after that there is changes
         let fork_head = self.heads_history[old_head_idx].as_slice();
 
@@ -151,15 +151,16 @@ impl Crdt {
             .automerge
             .save_after(self.heads_history[self.head_idx].as_slice());
 
-        [
+        self.heads_history = [
             &self.heads_history[..=self.head_idx],
             &[self.automerge.get_heads()],
         ]
         .concat()
         .to_vec();
+
         self.head_idx = self.heads_history.len() - 1;
         let new_heads = self.heads_history[self.head_idx].clone();
-        let new_heads = new_heads.into_iter().map(|x| x.0.clone()).collect();
+        let new_heads = new_heads.into_iter().map(|x| x.0).collect();
         (changes, self.head_idx - 1, vec![new_heads])
     }
 
@@ -167,7 +168,7 @@ impl Crdt {
         self.heads_history
             .clone()
             .into_iter()
-            .map(|x| x.into_iter().map(|y| y.0.clone()).collect())
+            .map(|x| x.into_iter().map(|y| y.0).collect())
             .collect()
     }
     pub(crate) fn save(&self) -> (Vec<u8>, Vec<Vec<[u8; 32]>>, usize) {
