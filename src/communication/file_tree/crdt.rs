@@ -3,6 +3,7 @@ use std::io::{self, Error};
 use automerge::{
     transaction::Transactable as _, Automerge, ChangeHash, ObjType, ReadDoc as _, Value, ROOT,
 };
+use futures::stream::Collect;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Crdt {
@@ -23,7 +24,11 @@ impl Crdt {
         }
     }
 
-    pub(crate) fn new(automerge: Automerge, heads_history: Vec<Vec<ChangeHash>>, head_idx: usize) -> Self {
+    pub(crate) fn new(
+        automerge: Automerge,
+        heads_history: Vec<Vec<ChangeHash>>,
+        head_idx: usize,
+    ) -> Self {
         Self {
             automerge,
             head_idx,
@@ -36,7 +41,7 @@ impl Crdt {
         &mut self,
         changes: &[u8],
         old_head_idx: usize,
-        new_heads: &[Vec<ChangeHash>],
+        new_heads: &[Vec<[u8; 32]>],
     ) -> Result<(), Box<dyn std::error::Error>> {
         if !old_head_idx < self.heads_history.len() {
             return Err(Box::new(Error::new(
@@ -44,6 +49,12 @@ impl Crdt {
                 "old_head_idx is out of bounds",
             )));
         }
+
+        let new_heads = new_heads
+            .into_iter()
+            .map(|x| x.into_iter().map(|y| ChangeHash(y.clone())).collect())
+            .collect::<Vec<_>>();
+        let new_heads = new_heads.as_slice();
 
         // get the last common head after that there is changes
         let fork_head = self.heads_history[old_head_idx].as_slice();
@@ -118,7 +129,7 @@ impl Crdt {
         pos: Option<usize>,
         del: Option<isize>,
         text: &str,
-    ) -> (Vec<u8>, usize, Vec<Vec<ChangeHash>>) {
+    ) -> (Vec<u8>, usize, Vec<Vec<[u8; 32]>>) {
         let obj_id = self.automerge.get(ROOT, Self::CONTENT).unwrap().unwrap().1; // to do
         if self.head_idx < self.heads_history.len() - 1 {
             self.automerge = self
@@ -146,10 +157,8 @@ impl Crdt {
         .concat()
         .to_vec();
         self.head_idx = self.heads_history.len() - 1;
-        (
-            changes,
-            self.head_idx - 1,
-            vec![self.heads_history[self.head_idx].clone()],
-        )
+        let new_heads = self.heads_history[self.head_idx].clone();
+        let new_heads = new_heads.into_iter().map(|x| x.0.clone()).collect();
+        (changes, self.head_idx - 1, vec![new_heads])
     }
 }
