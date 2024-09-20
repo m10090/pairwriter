@@ -94,9 +94,8 @@ fn open_file() {
 
         assert_vec(fs.clone(), Some(&files), Some(&emty_dirs));
 
-
         let auto = fs.tree.get("./file.txt").unwrap();
-        assert!(auto.read().unwrap() == b"hello world") ;
+        assert!(auto.read().unwrap() == b"hello world");
 
         assert_vec(fs.clone(), Some(&files), Some(&emty_dirs));
     });
@@ -178,7 +177,6 @@ fn move_file_failer() {
     .unwrap_err();
 
     assert_vec(ft, Some(&files), Some(&emty_dirs));
-
 }
 
 #[test]
@@ -213,4 +211,32 @@ fn remove_file_add_emty_dir() {
     emty_dirs.sort();
 
     assert_vec(ft, Some(&files), Some(&emty_dirs));
+}
+
+#[test]
+#[serial]
+fn undo_redo_operation() {
+    let files = FILES.clone();
+    let emty_dirs = vec!["./empty_dir/".to_string()];
+
+    let mut ft = File::create("./file.txt").unwrap();
+
+    ft.write_all("hello world".as_bytes()).unwrap();
+
+    let res = panic::catch_unwind(move || {
+        let mut fs = FileTree::new(files.clone(), emty_dirs.clone());
+        fs.open_file("./file.txt".to_string()).unwrap();
+
+        assert_vec(fs.clone(), Some(&files), Some(&emty_dirs));
+
+        let auto = fs.tree.get_mut("./file.txt").unwrap();
+        assert!(auto.read().unwrap() == b"hello world");
+
+        auto.edit(None, None, "hello world 2");
+        auto.undo();
+        assert!(auto.read().unwrap() == b"hello world");
+        assert_vec(fs.clone(), Some(&files), Some(&emty_dirs));
+    });
+    fs::remove_file("./file.txt").unwrap();
+    res.unwrap();
 }
