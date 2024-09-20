@@ -1,6 +1,8 @@
 use std::io::{self, Error};
 
-use automerge::{Automerge, ChangeHash, ObjType, ReadDoc as _, Value, ROOT};
+use automerge::{
+    transaction::Transactable as _, Automerge, ChangeHash, ObjType, ReadDoc as _, Value, ROOT,
+};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Crdt {
@@ -21,20 +23,20 @@ impl Crdt {
         }
     }
 
-    pub(crate) fn new(automerge: Automerge, heads: Vec<Vec<ChangeHash>>) -> Self {
+    pub(crate) fn new(automerge: Automerge, heads_history: Vec<Vec<ChangeHash>>, head_idx: usize) -> Self {
         Self {
             automerge,
-            head_idx: heads.len() - 1,
-            heads_history: heads,
+            head_idx,
+            heads_history,
         }
     }
     /// this will update the crdt with the change
     /// this also takes into account the undo and redo
     pub(crate) fn update(
         &mut self,
-        change: Vec<u8>,
+        changes: &[u8],
         old_head_idx: usize,
-        heads: Vec<Vec<ChangeHash>>,
+        new_heads: &[Vec<ChangeHash>],
     ) -> Result<(), Box<dyn std::error::Error>> {
         if !old_head_idx < self.heads_history.len() {
             return Err(Box::new(Error::new(
@@ -48,9 +50,9 @@ impl Crdt {
 
         self.automerge = self.automerge.fork_at(fork_head)?;
 
-        self.automerge.load_incremental(change.as_slice())?;
+        (&mut self.automerge).load_incremental(changes)?;
 
-        self.heads_history = [&self.heads_history[..=old_head_idx], heads.as_slice()]
+        self.heads_history = [&self.heads_history[..=old_head_idx], new_heads]
             .concat()
             .to_vec();
         self.head_idx = self.heads_history.len() - 1;
@@ -83,7 +85,7 @@ impl Crdt {
         let buf = &self.automerge;
         match buf.get_at(
             ROOT,
-            "content",
+            Self::CONTENT,
             self.heads_history[self.head_idx].as_slice(),
         ) {
             Ok(content) => {
@@ -109,5 +111,45 @@ impl Crdt {
                 "The file is corrupted",
             )),
         }
+    }
+
+    pub(crate) fn edit(
+        &mut self,
+        pos: Option<usize>,
+        del: Option<isize>,
+        text: &str,
+    ) -> (Vec<u8>, usize, Vec<Vec<ChangeHash>>) {
+        let obj_id = self.automerge.get(ROOT, Self::CONTENT).unwrap().unwrap().1; // to do
+        if self.head_idx < self.heads_history.len() - 1 {
+            self.automerge = self
+                .automerge
+                .fork_at(self.heads_history[self.head_idx].as_slice())
+                .unwrap();
+        }
+        {
+            let mut tx = self.automerge.transaction();
+            if pos.is_none() && del.is_none() {
+                let _ = tx.update_text(&obj_id, text);
+            } else {
+                let _ = tx.splice_text(obj_id, pos.unwrap(), del.unwrap(), text);
+            }
+            tx.commit();
+        }
+        let changes = self
+            .automerge
+            .save_after(self.heads_history[self.head_idx].as_slice());
+
+        [
+            &self.heads_history[..=self.head_idx],
+            &[self.automerge.get_heads()],
+        ]
+        .concat()
+        .to_vec();
+        self.head_idx = self.heads_history.len() - 1;
+        (
+            changes,
+            self.head_idx - 1,
+            vec![self.heads_history[self.head_idx].clone()],
+        )
     }
 }
