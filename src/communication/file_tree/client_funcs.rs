@@ -300,7 +300,7 @@ impl PrivateClientFn for FileTree {
             return Err(Error::new(io::ErrorKind::NotFound, "File Not Found"));
         }
         if let Some(file) = self.tree.get_mut(&path) {
-            file.update(changes, old_head_idx, heads);
+            let _ = file.update(changes, old_head_idx, heads);
         }
         Ok(()) // here there is no error that is not the case in client
     }

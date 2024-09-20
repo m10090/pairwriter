@@ -6,7 +6,6 @@ use crate::{
     },
     server::connection::Priviledge,
 };
-use automerge::{transaction::Transactable, ReadDoc, ROOT};
 use std::io;
 
 use tokio::sync::mpsc::{unbounded_channel, UnboundedReceiver, UnboundedSender};

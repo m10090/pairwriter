@@ -397,7 +397,7 @@ impl PrivateServerFn for FileTree {
             return Err(Error::new(io::ErrorKind::NotFound, "File Not Found"));
         }
         if let Some(file) = self.tree.get_mut(&path) {
-            file.update(changes, old_head_idx, heads);
+            let _ = file.update(changes, old_head_idx, heads);
             Ok(())
         } else {
             Err(Error::new(
@@ -626,7 +626,7 @@ impl PubServerFn for FileTree {
                 file.undo();
                 Ok(RPC::Undo { path }.encode().map_err(Self::err_msg)?)
             }
-            
+
             RPC::Redo { path } => {
                 let file = self
                     .tree

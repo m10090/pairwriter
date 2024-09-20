@@ -1,4 +1,3 @@
-use automerge::ChangeHash;
 use bincode::{
     error::{DecodeError, EncodeError},
     Decode, Encode,
