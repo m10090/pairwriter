@@ -3,8 +3,6 @@ use std::io::{self, Error};
 use automerge::{
     transaction::Transactable as _, Automerge, ChangeHash, ObjType, ReadDoc as _, Value, ROOT,
 };
-use futures::stream::Collect;
-
 #[derive(Debug, Clone)]
 pub(crate) struct Crdt {
     automerge: Automerge,
@@ -24,13 +22,20 @@ impl Crdt {
         }
     }
 
+    fn bytes_to_head_history(bytes: Vec<Vec<[u8; 32]>>) -> Vec<Vec<ChangeHash>> {
+        bytes
+            .into_iter()
+            .map(|x| x.into_iter().map(|y| ChangeHash(y)).collect())
+            .collect()
+    }
     pub(crate) fn new(
-        automerge: Automerge,
-        heads_history: Vec<Vec<ChangeHash>>,
+        automerge: Vec<u8>,
+        heads_history: Vec<Vec<[u8; 32]>>,
         head_idx: usize,
     ) -> Self {
+        let heads_history = Self::bytes_to_head_history(heads_history);
         Self {
-            automerge,
+            automerge: Automerge::load(automerge.as_slice()).unwrap(),
             head_idx,
             heads_history,
         }
@@ -50,12 +55,8 @@ impl Crdt {
             )));
         }
 
-        let new_heads = new_heads
-            .into_iter()
-            .map(|x| x.into_iter().map(|y| ChangeHash(y.clone())).collect())
-            .collect::<Vec<_>>();
-        let new_heads = new_heads.as_slice();
-
+        let new_heads = Self::bytes_to_head_history(new_heads.to_vec());
+        let new_heads = new_heads.as_slice(); 
         // get the last common head after that there is changes
         let fork_head = self.heads_history[old_head_idx].as_slice();
 
@@ -160,5 +161,20 @@ impl Crdt {
         let new_heads = self.heads_history[self.head_idx].clone();
         let new_heads = new_heads.into_iter().map(|x| x.0.clone()).collect();
         (changes, self.head_idx - 1, vec![new_heads])
+    }
+
+    fn get_heads_history(&self) -> Vec<Vec<[u8; 32]>> {
+        self.heads_history
+            .clone()
+            .into_iter()
+            .map(|x| x.into_iter().map(|y| y.0.clone()).collect())
+            .collect()
+    }
+    pub(crate) fn save(&self) -> (Vec<u8>, Vec<Vec<[u8; 32]>>, usize) {
+        (
+            self.automerge.save(),
+            self.get_heads_history(),
+            self.head_idx,
+        )
     }
 }

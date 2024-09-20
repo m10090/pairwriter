@@ -1,3 +1,4 @@
+use automerge::ChangeHash;
 use bincode::{
     error::{DecodeError, EncodeError},
     Decode, Encode,
@@ -32,10 +33,15 @@ pub enum RPC {
     ResSendFile {
         path: String,
         file: Vec<u8>, // this could be a automerge tree
+        heads_history: Vec<Vec<[u8;32]>>,
+        head_idx: usize,
     },
     EditBuffer {
         path: String,
         changes: Vec<u8>,
+        old_head_idx: usize,
+        /// hash of the new heads
+        new_heads: Vec<Vec<[u8;32]>>,
     },
     ReqMoveCursor {
         path: String,
