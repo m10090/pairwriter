@@ -1,4 +1,5 @@
 use super::*;
+use super::watcher::*;
 use serial_test::serial;
 use std::io;
 use tokio::fs;
